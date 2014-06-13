@@ -62,14 +62,14 @@
  *
  * This is the parent object for the objects within the section.
  */
-- (NSManagedObject *)objectForSection:(NSInteger)section;
+- (id)objectForSection:(NSInteger)section;
 
 /*!
  * @brief Object within a section
  *
  * This gets the object in section indexPath.section at index indexPath.item.
  */
-- (NSManagedObject *)objectAtIndexPath:(NSIndexPath *)indexPath;
+- (id)objectAtIndexPath:(NSIndexPath *)indexPath;
 
 /*!
  * @brief All objects in a section
