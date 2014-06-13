@@ -8,11 +8,13 @@
 
 #import <Foundation/Foundation.h>
 
+@class HLHierarchicalResultsController;
 @protocol HLHierarchicalResultsDelegate <NSObject>
-- (void)updateWithInsertedIndexPaths:(NSArray *)insertedIndexPaths
-                   deletedIndexPaths:(NSArray *)deletedIndexPaths
-                    insertedSections:(NSIndexSet *)insertedSections
-                     deletedSections:(NSIndexSet *)deletedSections;
+- (void)hierarchicalController:(HLHierarchicalResultsController *)controller
+ didUpdateWithInsertedSections:(NSIndexSet *)insertedSections
+               deletedSections:(NSIndexSet *)deletedSections
+                 insertedItems:(NSArray *)insertedIndexPaths
+                  deletedItems:(NSArray *)deletedIndexPaths;
 @end
 
 @interface HLHierarchicalResultsController : NSObject
