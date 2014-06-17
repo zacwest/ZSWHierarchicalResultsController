@@ -14,6 +14,10 @@
 
 @implementation HLHierarchicalResultsSection
 
+- (NSString *)description {
+    return [NSString stringWithFormat:@"<%@: %p; object = %@, contained objects = %@>", NSStringFromClass([self class]), self, self.object, self.containedObjects];
+}
+
 - (NSUInteger)hash {
     return self.object.hash;
 }

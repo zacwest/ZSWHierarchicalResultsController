@@ -44,7 +44,8 @@
  */
 - (instancetype)initWithFetchRequest:(NSFetchRequest *)fetchRequest
                             childKey:(NSString *)childKey
-                managedObjectContext:(NSManagedObjectContext *)context;
+                managedObjectContext:(NSManagedObjectContext *)context
+                            delegate:(id<HLHierarchicalResultsDelegate>)delegate;
 
 /*!
  * @brief Create a controller based on a single object
@@ -57,9 +58,10 @@
  */
 - (instancetype)initWithParentObject:(NSManagedObject *)parentObject
                             childKey:(NSString *)childKey
-                managedObjectContext:(NSManagedObjectContext *)context;
+                managedObjectContext:(NSManagedObjectContext *)context
+                            delegate:(id<HLHierarchicalResultsDelegate>)delegate;
 
-@property (nonatomic, weak) id<HLHierarchicalResultsDelegate> delegate;
+@property (nonatomic, weak, readonly) id<HLHierarchicalResultsDelegate> delegate;
 
 #pragma mark - Information
 

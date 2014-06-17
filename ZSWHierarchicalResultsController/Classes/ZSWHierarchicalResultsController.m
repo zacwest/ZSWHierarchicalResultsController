@@ -16,6 +16,8 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 @property (nonatomic, copy) NSString *childKey;
 @property (nonatomic, strong) NSManagedObjectContext *context;
 
+@property (nonatomic, weak, readwrite) id<HLHierarchicalResultsDelegate> delegate;
+
 @property (nonatomic, strong) NSArray *sections;
 @end
 
@@ -25,7 +27,8 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 
 - (instancetype)initWithFetchRequest:(NSFetchRequest *)fetchRequest
                             childKey:(NSString *)childKey
-                managedObjectContext:(NSManagedObjectContext *)context {
+                managedObjectContext:(NSManagedObjectContext *)context
+                            delegate:(id<HLHierarchicalResultsDelegate>)delegate {
     NSParameterAssert(fetchRequest != nil);
     NSParameterAssert(childKey != nil);
     NSParameterAssert(context != nil);
@@ -59,6 +62,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
         self.fetchRequest = updatedFetchRequest;
         self.childKey = childKey;
         self.context = context;
+        self.delegate = delegate;
         
         [self initializeFetch];
     }
@@ -67,10 +71,11 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 
 - (instancetype)initWithParentObject:(NSManagedObject *)parentObject
                             childKey:(NSString *)childKey
-                managedObjectContext:(NSManagedObjectContext *)context {
+                managedObjectContext:(NSManagedObjectContext *)context
+                            delegate:(id<HLHierarchicalResultsDelegate>)delegate {
     NSFetchRequest *fetchRequest = [NSFetchRequest fetchRequestWithEntityName:parentObject.entity.name];
     fetchRequest.predicate = [NSPredicate predicateWithFormat:@"self == %@", parentObject];
-    return [self initWithFetchRequest:fetchRequest childKey:childKey managedObjectContext:context];
+    return [self initWithFetchRequest:fetchRequest childKey:childKey managedObjectContext:context delegate:delegate];
 }
 
 - (id)init {
@@ -130,7 +135,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
         
         for (id insertedObject in insertedObjects) {
             HLHierarchicalResultsSection *section = [self newSectionInfoForObject:insertedObject];
-            NSInteger insertIdx = [self.sections indexOfObject:section
+            NSInteger insertIdx = [updatedSections indexOfObject:section
                                                  inSortedRange:NSMakeRange(0, self.sections.count)
                                                        options:NSBinarySearchingInsertionIndex
                                                usingComparator:comparator];
@@ -167,6 +172,10 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
         deletedItems = [NSMutableArray array];
         
         for (NSManagedObject *updatedObject in updatedObjects) {
+            HLHierarchicalResultsSection *section = [self sectionInfoForObject:updatedObject];
+            NSArray *previousObjects = section.containedObjects;
+            NSArray *currentObjects = [updatedObject valueForKey:self.childKey];
+            
             
         }
     }
@@ -185,7 +194,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 - (HLHierarchicalResultsSection *)newSectionInfoForObject:(id)object {
     HLHierarchicalResultsSection *section = [[HLHierarchicalResultsSection alloc] init];
     section.object = object;
-    section.containedObjects = [[section valueForKey:self.childKey] array];
+    section.containedObjects = [[[object valueForKey:self.childKey] array] copy];
     return section;
 }
 
