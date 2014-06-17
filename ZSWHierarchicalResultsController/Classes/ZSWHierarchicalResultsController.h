@@ -50,6 +50,11 @@
 #pragma mark - Information
 
 /*!
+ * @brief Number of sections
+ */
+- (NSInteger)numberOfSections;
+
+/*!
  * @brief Number of objects in a section
  *
  * This count does not include the object representing the section.
