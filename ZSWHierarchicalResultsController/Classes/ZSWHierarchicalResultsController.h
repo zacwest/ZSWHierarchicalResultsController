@@ -10,6 +10,18 @@
 
 @class HLHierarchicalResultsController;
 @protocol HLHierarchicalResultsDelegate <NSObject>
+/*!
+ * @brief The controller updated
+ *
+ * You must process the changes in the order of parameters of this method.
+ *
+ * For example, instruct your view layer to handle inserts before deletes.
+ *
+ * @param insertedSections The sections newly inserted
+ * @param deletedsections The sections newly deleted
+ * @param insertedIndexPaths The items newly deleted
+ * @param deletedIndexPaths The items newly inserted
+ */
 - (void)hierarchicalController:(HLHierarchicalResultsController *)controller
  didUpdateWithInsertedSections:(NSIndexSet *)insertedSections
                deletedSections:(NSIndexSet *)deletedSections
@@ -46,6 +58,8 @@
 - (instancetype)initWithParentObject:(NSManagedObject *)parentObject
                             childKey:(NSString *)childKey
                 managedObjectContext:(NSManagedObjectContext *)context;
+
+@property (nonatomic, weak) id<HLHierarchicalResultsDelegate> delegate;
 
 #pragma mark - Information
 

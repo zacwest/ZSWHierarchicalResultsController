@@ -7,6 +7,7 @@
 //
 
 #import "HLHierarchicalResultsController.h"
+#import "HLHierarchicalResultsSection.h"
 
 HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 
@@ -15,8 +16,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 @property (nonatomic, copy) NSString *childKey;
 @property (nonatomic, strong) NSManagedObjectContext *context;
 
-@property (nonatomic, strong) NSArray *sectionObjects;
-@property (nonatomic, strong) NSDictionary *objectsBySection;
+@property (nonatomic, strong) NSArray *sections;
 @end
 
 @implementation HLHierarchicalResultsController
@@ -79,27 +79,21 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 }
 
 - (void)initializeFetch {
+    NSError *error;
+    NSArray *sectionObjects = [self.context executeFetchRequest:self.fetchRequest
+                                                      error:&error];
+    if (!sectionObjects) {
+        DDLogError(@"Failed to fetch objects: %@", error);
+    }
+    
+    self.sections = [sectionObjects bk_map:^id(id obj) {
+        return [self newSectionInfoForObject:obj];
+    }];
+
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(objectsDidChange:)
                                                  name:NSManagedObjectContextObjectsDidChangeNotification
                                                object:self.context];
-    
-    NSError *error;
-    self.sectionObjects = [self.context executeFetchRequest:self.fetchRequest
-                                                      error:&error];
-    if (!self.sectionObjects) {
-        DDLogError(@"Failed to fetch objects: %@", error);
-    }
-    
-    NSMutableDictionary *objectsBySection = [NSMutableDictionary dictionaryWithCapacity:self.sectionObjects.count];
-    
-    [self.sectionObjects enumerateObjectsUsingBlock:^(NSManagedObject *parentObject, NSUInteger idx, BOOL *stop) {
-        NSOrderedSet *objects = [parentObject valueForKey:self.childKey];
-        NSAssert([objects isKindOfClass:[NSOrderedSet class]], @"Objects should be ordered set, but is %@", [objects class]);
-        objectsBySection[@(idx)] = objects.array;
-    }];
-    
-    self.objectsBySection = objectsBySection;
 }
 
 - (void)dealloc {
@@ -108,39 +102,121 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 
 #pragma mark - Object observing
 - (void)objectsDidChange:(NSNotification *)notification {
+    NSDictionary *userInfo = notification.userInfo;
+    NSEntityDescription *entity = self.fetchRequest.entity;
     
+    BOOL (^matchesObject)(id) = ^(NSManagedObject *obj){
+        return [obj.entity isKindOfEntity:entity];
+    };
+    
+    NSArray *insertedObjects = [userInfo[NSInsertedObjectsKey] bk_select:matchesObject];
+    NSArray *updatedObjects = [userInfo[NSUpdatedObjectsKey] bk_select:matchesObject];
+    NSArray *deletedObjects = [userInfo[NSDeletedObjectsKey] bk_select:matchesObject];
+    
+    NSLog(@"Inserted: %@, updated: %@, deleted: %@", insertedObjects, updatedObjects, deletedObjects);
+    
+    NSMutableIndexSet *insertedSet;
+    
+    if (insertedObjects.count > 0) {
+        NSMutableArray *updatedSections = [NSMutableArray arrayWithArray:self.sections];
+        
+        insertedSet = [NSMutableIndexSet indexSet];
+        
+        NSArray *sortDescriptors = self.fetchRequest.sortDescriptors;
+        NSComparator comparator = ^NSComparisonResult(HLHierarchicalResultsSection *section1,
+                                                      HLHierarchicalResultsSection *section2) {
+            return [section1 compare:section2 usingSortDescriptors:sortDescriptors];
+        };
+        
+        for (id insertedObject in insertedObjects) {
+            HLHierarchicalResultsSection *section = [self newSectionInfoForObject:insertedObject];
+            NSInteger insertIdx = [self.sections indexOfObject:section
+                                                 inSortedRange:NSMakeRange(0, self.sections.count)
+                                                       options:NSBinarySearchingInsertionIndex
+                                               usingComparator:comparator];
+            [insertedSet addIndex:insertIdx];
+            
+            [updatedSections insertObject:section atIndex:insertIdx];
+        }
+        
+        self.sections = updatedSections;
+    }
+    
+    NSMutableIndexSet *deletedSet;
+    
+    if (deletedObjects.count > 0) {
+        NSMutableArray *updatedSections = [NSMutableArray arrayWithArray:self.sections];
+        
+        deletedSet = [NSMutableIndexSet indexSet];
+        
+        for (id deletedObject in deletedObjects) {
+            HLHierarchicalResultsSection *section = [self sectionInfoForObject:deletedObject];
+            NSInteger deleteIdx = [self.sections indexOfObject:section];
+            [deletedSet addIndex:deleteIdx];
+            [updatedSections removeObjectAtIndex:deleteIdx];
+        }
+        
+        self.sections = updatedSections;
+    }
+    
+    NSMutableArray *insertedItems;
+    NSMutableArray *deletedItems;
+    
+    if (updatedObjects.count > 0) {
+        insertedItems = [NSMutableArray array];
+        deletedItems = [NSMutableArray array];
+        
+        for (NSManagedObject *updatedObject in updatedObjects) {
+            
+        }
+    }
+    
+    if (insertedSet || deletedSet || insertedItems || deletedItems) {
+        [self.delegate hierarchicalController:self
+                didUpdateWithInsertedSections:insertedSet
+                              deletedSections:deletedSet
+                                insertedItems:insertedItems
+                                 deletedItems:deletedItems];
+    }
 }
 
 #pragma mark - Getters
 
-#define HLVerifySectionArray(sectionObject, sectionIdx) NSAssert(sectionObject.count > sectionIdx, @"Asked for a section %d out of range %d", sectionIdx, sectionObject.count);
-#define HLVerifySectionDict(sectionObject, sectionIdx) NSAssert(sectionObject[@(sectionIdx)], @"Asked for section %d but does not exist", sectionIdx);
+- (HLHierarchicalResultsSection *)newSectionInfoForObject:(id)object {
+    HLHierarchicalResultsSection *section = [[HLHierarchicalResultsSection alloc] init];
+    section.object = object;
+    section.containedObjects = [[section valueForKey:self.childKey] array];
+    return section;
+}
+
+- (HLHierarchicalResultsSection *)sectionInfoForObject:(id)object {
+    return [self.sections bk_match:^BOOL(HLHierarchicalResultsSection *section) {
+        return section.object == object;
+    }];
+}
+
+- (HLHierarchicalResultsSection *)sectionInfoForSection:(NSInteger)section {
+    return self.sections[section];
+}
 
 - (NSInteger)numberOfSections {
-    return self.sectionObjects.count;
+    return self.sections.count;
 }
 
 - (NSInteger)numberOfObjectsInSection:(NSInteger)section {
-    HLVerifySectionDict(self.objectsBySection, section);
-    return [self.objectsBySection[@(section)] count];
+    return [self sectionInfoForSection:section].containedObjects.count;
 }
 
 - (id)objectForSection:(NSInteger)section {
-    HLVerifySectionArray(self.sectionObjects, section);
-    return self.sectionObjects[section];
+    return [self sectionInfoForSection:section].object;
 }
 
 - (id)objectAtIndexPath:(NSIndexPath *)indexPath {
-    HLVerifySectionDict(self.objectsBySection, indexPath.section);
-    NSArray *objectsBySection = self.objectsBySection[@(indexPath.section)];
-    HLVerifySectionArray(objectsBySection, indexPath.item);
-    id object = objectsBySection[indexPath.item];
-    return object;
+    return [self sectionInfoForSection:indexPath.section].containedObjects[indexPath.item];
 }
 
 - (NSArray *)allObjectsInSection:(NSInteger)section {
-    HLVerifySectionDict(self.objectsBySection, section);
-    return self.objectsBySection[@(section)];
+    return [self sectionInfoForSection:section].containedObjects;
 }
 
 @end
