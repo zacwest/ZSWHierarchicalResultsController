@@ -106,79 +106,120 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 }
 
 #pragma mark - Object observing
+- (NSIndexSet *)updateSectionsWithInsertedObjects:(NSArray *)insertedObjects {
+    if (insertedObjects.count == 0) {
+        return nil;
+    }
+    
+    NSMutableArray *updatedSections = [NSMutableArray arrayWithArray:self.sections];
+    NSMutableIndexSet *insertedSet = [NSMutableIndexSet indexSet];
+    
+    NSArray *sortDescriptors = self.fetchRequest.sortDescriptors;
+    NSComparator comparator = ^NSComparisonResult(HLHierarchicalResultsSection *section1,
+                                                  HLHierarchicalResultsSection *section2) {
+        return [section1 compare:section2 usingSortDescriptors:sortDescriptors];
+    };
+    
+    for (id insertedObject in insertedObjects) {
+        HLHierarchicalResultsSection *section = [self newSectionInfoForObject:insertedObject];
+        NSInteger insertIdx = [updatedSections indexOfObject:section
+                                               inSortedRange:NSMakeRange(0, self.sections.count)
+                                                     options:NSBinarySearchingInsertionIndex
+                                             usingComparator:comparator];
+        [insertedSet addIndex:insertIdx];
+        
+        [updatedSections insertObject:section atIndex:insertIdx];
+    }
+    
+    self.sections = updatedSections;
+    
+    return insertedSet;
+}
+
+- (NSIndexSet *)updateSectionsWithDeletedObjects:(NSArray *)deletedObjects {
+    if (deletedObjects.count == 0) {
+        return nil;
+    }
+    
+    NSMutableArray *updatedSections = [NSMutableArray arrayWithArray:self.sections];
+    NSMutableIndexSet *deletedSet = [NSMutableIndexSet indexSet];
+    
+    for (id deletedObject in deletedObjects) {
+        HLHierarchicalResultsSection *section = [self sectionInfoForObject:deletedObject index:NULL];
+        NSInteger deleteIdx = [self.sections indexOfObject:section];
+        [deletedSet addIndex:deleteIdx];
+        [updatedSections removeObjectAtIndex:deleteIdx];
+    }
+    
+    self.sections = updatedSections;
+    
+    return deletedSet;
+}
+
+// this method guarantees that the out parameters will be unmodified if unchanged
+- (void)updateSectionsWithUpdatedObjects:(NSArray *)updatedObjects
+                      insertedIndexPaths:(out NSArray **)insertedIndexPaths
+                       deletedIndexPaths:(out NSArray **)deletedIndexPaths {
+    if (!updatedObjects.count) {
+        return;
+    }
+    
+    
+}
+
 - (void)objectsDidChange:(NSNotification *)notification {
     NSDictionary *userInfo = notification.userInfo;
     NSEntityDescription *entity = self.fetchRequest.entity;
     
+    // Grab all objects which are our parent object type
     BOOL (^matchesObject)(id) = ^(NSManagedObject *obj){
         return [obj.entity isKindOfEntity:entity];
     };
     
-    NSArray *insertedObjects = [userInfo[NSInsertedObjectsKey] bk_select:matchesObject];
-    NSArray *updatedObjects = [userInfo[NSUpdatedObjectsKey] bk_select:matchesObject];
-    NSArray *deletedObjects = [userInfo[NSDeletedObjectsKey] bk_select:matchesObject];
+    NSArray *advertisedInsertedObjects = [userInfo[NSInsertedObjectsKey] bk_select:matchesObject];
+    NSArray *advertisedUpdatedObjects = [userInfo[NSUpdatedObjectsKey] bk_select:matchesObject];
+    NSArray *advertisedDeletedObjects = [userInfo[NSDeletedObjectsKey] bk_select:matchesObject];
+    
+    if (!advertisedInsertedObjects.count && !advertisedUpdatedObjects.count && !advertisedDeletedObjects.count) {
+        // early abort if we have no work to do.
+        return;
+    }
+    
+    // Now, we need to update inserted/updated/deleted to be true about objects matching
+    // the predicate. So, if something is updated to not match, consider it deleted,
+    // and if it's inserted but doesn't match, don't include it.
+    
+    NSPredicate *fetchRequestPredicate = self.fetchRequest.predicate;
+    NSArray *insertedObjects = [advertisedInsertedObjects filteredArrayUsingPredicate:fetchRequestPredicate];
+    
+    // Avoiding more memory hits is better than using a bit more memory.
+    const NSInteger capacity = advertisedUpdatedObjects.count + advertisedDeletedObjects.count;
+    
+    NSMutableArray *updatedObjects = [NSMutableArray arrayWithCapacity:capacity];
+    NSMutableArray *deletedObjects = [NSMutableArray arrayWithCapacity:capacity];
+    
+    for (NSManagedObject *updatedObject in advertisedUpdatedObjects) {
+        if ([fetchRequestPredicate evaluateWithObject:updatedObject]) {
+            [updatedObjects addObject:updatedObject];
+        } else {
+            [deletedObjects addObject:updatedObject];
+        }
+    }
+    
+    [deletedObjects addObjectsFromArray:advertisedDeletedObjects];
+    
+    //
     
     NSLog(@"Inserted: %@, updated: %@, deleted: %@", insertedObjects, updatedObjects, deletedObjects);
     
-    NSMutableIndexSet *insertedSet;
+    NSIndexSet *insertedSet = [self updateSectionsWithInsertedObjects:insertedObjects];
+    NSIndexSet *deletedSet = [self updateSectionsWithDeletedObjects:deletedObjects];
     
-    if (insertedObjects.count > 0) {
-        NSMutableArray *updatedSections = [NSMutableArray arrayWithArray:self.sections];
-        
-        insertedSet = [NSMutableIndexSet indexSet];
-        
-        NSArray *sortDescriptors = self.fetchRequest.sortDescriptors;
-        NSComparator comparator = ^NSComparisonResult(HLHierarchicalResultsSection *section1,
-                                                      HLHierarchicalResultsSection *section2) {
-            return [section1 compare:section2 usingSortDescriptors:sortDescriptors];
-        };
-        
-        for (id insertedObject in insertedObjects) {
-            HLHierarchicalResultsSection *section = [self newSectionInfoForObject:insertedObject];
-            NSInteger insertIdx = [updatedSections indexOfObject:section
-                                                 inSortedRange:NSMakeRange(0, self.sections.count)
-                                                       options:NSBinarySearchingInsertionIndex
-                                               usingComparator:comparator];
-            [insertedSet addIndex:insertIdx];
-            
-            [updatedSections insertObject:section atIndex:insertIdx];
-        }
-        
-        self.sections = updatedSections;
-    }
+    NSArray *insertedItems, *deletedItems;
     
-    NSMutableIndexSet *deletedSet;
-    
-    if (deletedObjects.count > 0) {
-        NSMutableArray *updatedSections = [NSMutableArray arrayWithArray:self.sections];
-        
-        deletedSet = [NSMutableIndexSet indexSet];
-        
-        for (id deletedObject in deletedObjects) {
-            HLHierarchicalResultsSection *section = [self sectionInfoForObject:deletedObject];
-            NSInteger deleteIdx = [self.sections indexOfObject:section];
-            [deletedSet addIndex:deleteIdx];
-            [updatedSections removeObjectAtIndex:deleteIdx];
-        }
-        
-        self.sections = updatedSections;
-    }
-    
-    NSMutableArray *insertedItems;
-    NSMutableArray *deletedItems;
-    
-    if (updatedObjects.count > 0) {
-        insertedItems = [NSMutableArray array];
-        deletedItems = [NSMutableArray array];
-        
-        for (NSManagedObject *updatedObject in updatedObjects) {
-            HLHierarchicalResultsSection *section = [self sectionInfoForObject:updatedObject];
-            NSArray *previousObjects = section.containedObjects;
-            NSArray *currentObjects = [updatedObject valueForKey:self.childKey];
-            
-            
-        }
-    }
+    [self updateSectionsWithUpdatedObjects:updatedObjects
+                        insertedIndexPaths:&insertedItems
+                         deletedIndexPaths:&deletedItems];
     
     if (insertedSet || deletedSet || insertedItems || deletedItems) {
         [self.delegate hierarchicalController:self
@@ -198,10 +239,24 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     return section;
 }
 
-- (HLHierarchicalResultsSection *)sectionInfoForObject:(id)object {
-    return [self.sections bk_match:^BOOL(HLHierarchicalResultsSection *section) {
-        return section.object == object;
+- (HLHierarchicalResultsSection *)sectionInfoForObject:(id)object index:(out NSInteger *)outIndex {
+    // todo: faster
+    
+    __block HLHierarchicalResultsSection *returnSection;
+    __block NSInteger returnIdx;
+    
+    [self.sections enumerateObjectsUsingBlock:^(HLHierarchicalResultsSection *section, NSUInteger idx, BOOL *stop) {
+        if (section.object == object) {
+            returnSection = section;
+            returnIdx = idx;
+        }
     }];
+    
+    if (outIndex) {
+        *outIndex = returnIdx;
+    }
+    
+    return returnSection;
 }
 
 - (HLHierarchicalResultsSection *)sectionInfoForSection:(NSInteger)section {
