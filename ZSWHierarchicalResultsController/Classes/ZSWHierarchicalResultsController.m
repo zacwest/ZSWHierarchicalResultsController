@@ -123,7 +123,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     for (id insertedObject in insertedObjects) {
         HLHierarchicalResultsSection *section = [self newSectionInfoForObject:insertedObject];
         NSInteger insertIdx = [updatedSections indexOfObject:section
-                                               inSortedRange:NSMakeRange(0, self.sections.count)
+                                               inSortedRange:NSMakeRange(0, updatedSections.count)
                                                      options:NSBinarySearchingInsertionIndex
                                              usingComparator:comparator];
         [insertedSet addIndex:insertIdx];
