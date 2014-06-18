@@ -122,6 +122,10 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
         return nil;
     }
     
+#ifdef CONFIGURATION_Debug
+    NSAssert([insertedObjects isEqualToArray:[insertedObjects sortedArrayUsingDescriptors:self.fetchRequest.sortDescriptors]], @"This method must be passed sorted objects to keep stable indexes in the index set (otherwise we could have 2 inserts on a single index, which the index set coalesces)");
+#endif
+    
     NSMutableArray *updatedSections = [NSMutableArray arrayWithArray:self.sections];
     NSMutableIndexSet *insertedSet = [NSMutableIndexSet indexSet];
     
@@ -130,9 +134,6 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
                                                   HLHierarchicalResultsSection *section2) {
         return [section1 compare:section2 usingSortDescriptors:sortDescriptors];
     };
-    
-    // we need to sort first because we need stable indexes
-    insertedObjects = [insertedObjects sortedArrayUsingDescriptors:sortDescriptors];
     
     for (id insertedObject in insertedObjects) {
         HLHierarchicalResultsSection *section = [self newSectionInfoForObject:insertedObject];
@@ -154,9 +155,14 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     if (deletedObjects.count == 0) {
         return nil;
     }
+
+#ifdef CONFIGURATION_Debug
+    NSAssert([deletedObjects isEqualToArray:[deletedObjects sortedArrayUsingDescriptors:self.fetchRequest.sortDescriptors]], @"This method must be passed sorted objects to keep stable indexes in the index set (otherwise we could have 2 inserts on a single index, which the index set coalesces)");
+#endif
     
     NSMutableArray *updatedSections = [NSMutableArray arrayWithArray:self.sections];
     NSMutableIndexSet *deletedSet = [NSMutableIndexSet indexSet];
+    
     
     for (id deletedObject in deletedObjects) {
         NSInteger deleteIdx;
@@ -223,6 +229,11 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     }
     
     [deletedObjects addObjectsFromArray:advertisedDeletedObjects.allObjects];
+    
+    // Sort the inserted/deleted objects, since we need stable indexes for keeping the index set going
+    NSArray *sortDescriptors = self.fetchRequest.sortDescriptors;
+    [deletedObjects sortUsingDescriptors:sortDescriptors];
+    insertedObjects = [insertedObjects sortedArrayUsingDescriptors:sortDescriptors];
     
     //
     
