@@ -39,7 +39,7 @@
  * The fetch request must have at least one sort descriptor, like \ref NSFetchedResultsController.
  *
  * @param fetchRequest The fetch request for the parent objects
- * @param childKey The child key on the entity for the fetchRequest representing items in the sections
+ * @param childKey The child key on the entity for the fetchRequest representing items in the sections; this must have an inverse relationship
  * @param context The NSManagedObjectContext for Core Data requests
  */
 - (instancetype)initWithFetchRequest:(NSFetchRequest *)fetchRequest
