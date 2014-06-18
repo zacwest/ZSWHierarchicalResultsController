@@ -25,7 +25,7 @@
  * @param insertedIndexPaths The items newly deleted
  */
 - (void)hierarchicalController:(HLHierarchicalResultsController *)controller
- didUpdateWithDeletedSections:(NSIndexSet *)deletedSections
+  didUpdateWithDeletedSections:(NSIndexSet *)deletedSections
               insertedSections:(NSIndexSet *)insertedSections
                   deletedItems:(NSArray *)deletedIndexPaths
                  insertedItems:(NSArray *)insertedIndexPaths;
