@@ -170,6 +170,8 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     NSMutableIndexSet *deletedSet = [NSMutableIndexSet indexSet];
     
     for (id deletedObject in deletedObjects) {
+        // xxx todo we need to update the ids as we go along, this doesn't do that
+        
         NSInteger deleteIdx;
         __unused HLHierarchicalResultsSection *section = [self sectionInfoForObject:deletedObject index:&deleteIdx];
         [deletedSet addIndex:deleteIdx];
