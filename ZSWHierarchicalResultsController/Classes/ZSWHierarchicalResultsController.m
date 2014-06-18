@@ -14,6 +14,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 @interface HLHierarchicalResultsController()
 @property (nonatomic, copy) NSFetchRequest *fetchRequest;
 @property (nonatomic, copy) NSString *childKey;
+@property (nonatomic, copy) NSString *inverseChildKey;
 @property (nonatomic, strong) NSManagedObjectContext *context;
 
 @property (nonatomic, weak, readwrite) id<HLHierarchicalResultsDelegate> delegate;
@@ -52,6 +53,9 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     NSAssert(relationship.isOrdered,
              @"childKey %@ must be ordered relationship on %@", childKey, entity);
     
+    NSAssert(relationship.inverseRelationship != nil,
+             @"childKey %@ must have an inverse relationship on %@", childKey, relationship.destinationEntity.name);
+    
     self = [super init];
     if (self) {
         NSFetchRequest *updatedFetchRequest = [fetchRequest copy];
@@ -61,6 +65,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
         
         self.fetchRequest = updatedFetchRequest;
         self.childKey = childKey;
+        self.inverseChildKey = relationship.inverseRelationship.name;
         self.context = context;
         self.delegate = delegate;
         
