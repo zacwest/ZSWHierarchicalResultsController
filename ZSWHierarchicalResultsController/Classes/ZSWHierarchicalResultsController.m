@@ -196,6 +196,8 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
         return [obj.entity isKindOfEntity:entity];
     };
     
+    // these are unnecessary but since I keep forgetting that they're sets and not arrays,
+    // let's keep them floating around with their correct type.
     NSSet *notificationInsertedObjects = userInfo[NSInsertedObjectsKey];
     NSSet *notificationUpdatedObjects = userInfo[NSUpdatedObjectsKey];
     NSSet *notificationDeletedObjects = userInfo[NSDeletedObjectsKey];
