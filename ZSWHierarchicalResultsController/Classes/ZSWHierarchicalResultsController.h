@@ -14,8 +14,10 @@
  * @brief The controller updated
  *
  * You must process the changes in the order of parameters of this method.
- *
  * For example, instruct your view layer to handle inserts before deletes.
+ *
+ * It is by design that individual index paths do not get updates. You must handle
+ * this yourself via KVO on the individual objects or some other mechanism.
  *
  * @param insertedSections The sections newly inserted
  * @param deletedsections The sections newly deleted
