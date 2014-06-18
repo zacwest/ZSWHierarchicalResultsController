@@ -63,6 +63,10 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
         [prefetchRelationships addObject:childKey];
         updatedFetchRequest.relationshipKeyPathsForPrefetching = prefetchRelationships;
         
+        if (!updatedFetchRequest.predicate) {
+            updatedFetchRequest.predicate = [NSPredicate predicateWithValue:YES];
+        }
+        
         self.fetchRequest = updatedFetchRequest;
         self.childKey = childKey;
         self.inverseChildKey = relationship.inverseRelationship.name;
@@ -127,6 +131,9 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
         return [section1 compare:section2 usingSortDescriptors:sortDescriptors];
     };
     
+    // we need to sort first because we need stable indexes
+    insertedObjects = [insertedObjects sortedArrayUsingDescriptors:sortDescriptors];
+    
     for (id insertedObject in insertedObjects) {
         HLHierarchicalResultsSection *section = [self newSectionInfoForObject:insertedObject];
         NSInteger insertIdx = [updatedSections indexOfObject:section
@@ -183,9 +190,13 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
         return [obj.entity isKindOfEntity:entity];
     };
     
-    NSArray *advertisedInsertedObjects = [userInfo[NSInsertedObjectsKey] bk_select:matchesObject];
-    NSArray *advertisedUpdatedObjects = [userInfo[NSUpdatedObjectsKey] bk_select:matchesObject];
-    NSArray *advertisedDeletedObjects = [userInfo[NSDeletedObjectsKey] bk_select:matchesObject];
+    NSSet *notificationInsertedObjects = userInfo[NSInsertedObjectsKey];
+    NSSet *notificationUpdatedObjects = userInfo[NSUpdatedObjectsKey];
+    NSSet *notificationDeletedObjects = userInfo[NSDeletedObjectsKey];
+    
+    NSSet *advertisedInsertedObjects = [notificationInsertedObjects bk_select:matchesObject];
+    NSSet *advertisedUpdatedObjects = [notificationUpdatedObjects bk_select:matchesObject];
+    NSSet *advertisedDeletedObjects = [notificationDeletedObjects bk_select:matchesObject];
     
     if (!advertisedInsertedObjects.count && !advertisedUpdatedObjects.count && !advertisedDeletedObjects.count) {
         // early abort if we have no work to do.
@@ -197,7 +208,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     // and if it's inserted but doesn't match, don't include it.
     
     NSPredicate *fetchRequestPredicate = self.fetchRequest.predicate;
-    NSArray *insertedObjects = [advertisedInsertedObjects filteredArrayUsingPredicate:fetchRequestPredicate];
+    NSArray *insertedObjects = [advertisedInsertedObjects filteredSetUsingPredicate:fetchRequestPredicate].allObjects;
     
     // Avoiding more memory hits is better than using a bit more memory for deleted.
     NSMutableArray *updatedObjects = [NSMutableArray arrayWithCapacity:advertisedUpdatedObjects.count];
@@ -211,7 +222,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
         }
     }
     
-    [deletedObjects addObjectsFromArray:advertisedDeletedObjects];
+    [deletedObjects addObjectsFromArray:advertisedDeletedObjects.allObjects];
     
     //
     
