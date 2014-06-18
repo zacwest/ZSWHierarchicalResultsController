@@ -135,15 +135,21 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
         return [section1 compare:section2 usingSortDescriptors:sortDescriptors];
     };
     
+    NSInteger lastInsertedIdx = 0;
+    
     for (id insertedObject in insertedObjects) {
         HLHierarchicalResultsSection *section = [self newSectionInfoForObject:insertedObject];
         NSInteger insertIdx = [updatedSections indexOfObject:section
-                                               inSortedRange:NSMakeRange(0, updatedSections.count)
+                                               inSortedRange:NSMakeRange(lastInsertedIdx, updatedSections.count - lastInsertedIdx)
                                                      options:NSBinarySearchingInsertionIndex
                                              usingComparator:comparator];
-        [insertedSet addIndex:insertIdx];
         
+        [insertedSet addIndex:insertIdx];
         [updatedSections insertObject:section atIndex:insertIdx];
+        
+        // we keep the last inserted index since we're inserting in order,
+        // this way we can speed up the math a bit
+        lastInsertedIdx = insertIdx;
     }
     
     self.sections = updatedSections;
