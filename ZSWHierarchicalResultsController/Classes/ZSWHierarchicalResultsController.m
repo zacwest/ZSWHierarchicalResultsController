@@ -20,6 +20,10 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 @property (nonatomic, weak, readwrite) id<HLHierarchicalResultsDelegate> delegate;
 
 @property (nonatomic, strong) NSArray *sections;
+
+@property (nonatomic, strong) NSArray *sortDescriptors;
+@property (nonatomic, strong) NSArray *reverseSortDescriptors;
+
 @end
 
 @implementation HLHierarchicalResultsController
@@ -68,6 +72,12 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
         }
         
         self.fetchRequest = updatedFetchRequest;
+        
+        self.sortDescriptors = updatedFetchRequest.sortDescriptors;
+        self.reverseSortDescriptors = [self.sortDescriptors bk_map:^id(NSSortDescriptor *sortDescriptor) {
+            return [sortDescriptor reversedSortDescriptor];
+        }];
+        
         self.childKey = childKey;
         self.inverseChildKey = relationship.inverseRelationship.name;
         self.context = context;
@@ -117,27 +127,34 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 
 #pragma mark - Object observing
 
+- (NSComparator)comparatorForSections {
+    NSArray *sortDescriptors = self.sortDescriptors;
+    
+    return ^NSComparisonResult(HLHierarchicalResultsSection *section1,
+                               HLHierarchicalResultsSection *section2) {
+        return [section1 compare:section2 usingSortDescriptors:sortDescriptors];
+    };
+}
+
 - (NSIndexSet *)updateSectionsWithInsertedObjects:(NSArray *)insertedObjects {
     if (insertedObjects.count == 0) {
         return nil;
     }
     
 #ifdef CONFIGURATION_Debug
-    NSAssert([insertedObjects isEqualToArray:[insertedObjects sortedArrayUsingDescriptors:self.fetchRequest.sortDescriptors]], @"This method must be passed sorted objects to keep stable indexes in the index set (otherwise we could have 2 inserts on a single index, which the index set coalesces)");
+    NSAssert([insertedObjects isEqualToArray:[insertedObjects sortedArrayUsingDescriptors:self.sortDescriptors]], @"This method must be passed sorted objects to keep stable indexes in the index set (otherwise we could have 2 inserts on a single index, which the index set coalesces)");
 #endif
     
     NSMutableArray *updatedSections = [NSMutableArray arrayWithArray:self.sections];
     NSMutableIndexSet *insertedSet = [NSMutableIndexSet indexSet];
     
-    NSArray *sortDescriptors = self.fetchRequest.sortDescriptors;
-    NSComparator comparator = ^NSComparisonResult(HLHierarchicalResultsSection *section1,
-                                                  HLHierarchicalResultsSection *section2) {
-        return [section1 compare:section2 usingSortDescriptors:sortDescriptors];
-    };
+    NSComparator comparator = [self comparatorForSections];
     
     NSInteger lastInsertedIdx = 0;
     
     for (id insertedObject in insertedObjects) {
+        // note: section indices on section objects are not valid in this method
+        
         HLHierarchicalResultsSection *section = [self newSectionInfoForObject:insertedObject];
         NSInteger insertIdx = [updatedSections indexOfObject:section
                                                inSortedRange:NSMakeRange(lastInsertedIdx, updatedSections.count - lastInsertedIdx)
@@ -163,20 +180,20 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     }
 
 #ifdef CONFIGURATION_Debug
-    NSAssert([deletedObjects isEqualToArray:[deletedObjects sortedArrayUsingDescriptors:self.fetchRequest.sortDescriptors]], @"This method must be passed sorted objects to keep stable indexes in the index set (otherwise we could have 2 inserts on a single index, which the index set coalesces)");
+    NSAssert([deletedObjects isEqualToArray:[deletedObjects sortedArrayUsingDescriptors:self.reverseSortDescriptors]], @"This method must be passed sorted objects to keep stable indexes in the index set (otherwise we could have 2 inserts on a single index, which the index set coalesces)");
 #endif
     
     NSMutableArray *updatedSections = [NSMutableArray arrayWithArray:self.sections];
     NSMutableIndexSet *deletedSet = [NSMutableIndexSet indexSet];
     
     for (id deletedObject in deletedObjects) {
-        // xxx todo we need to update the ids as we go along, this doesn't do that
-        
-        NSInteger deleteIdx;
-        __unused HLHierarchicalResultsSection *section = [self sectionInfoForObject:deletedObject index:&deleteIdx];
-        [deletedSet addIndex:deleteIdx];
-        [updatedSections removeObjectAtIndex:deleteIdx];
+        // note: section indices on section objects are not valid in this method
+        // but since we're going backwards, our indices are valid before our current delete point
+        HLHierarchicalResultsSection *section = [self sectionInfoForObject:deletedObject];
+        [deletedSet addIndex:section.sectionIdx];
     }
+    
+    [updatedSections removeObjectsAtIndexes:deletedSet];
     
     self.sections = updatedSections;
     
@@ -198,8 +215,8 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     NSMutableArray *deletedIndexPaths = [NSMutableArray array];
     
     for (NSManagedObject *object in updatedObjects) {
-        NSInteger sectionIdx;
-        HLHierarchicalResultsSection *section = [self sectionInfoForObject:object index:&sectionIdx];
+        HLHierarchicalResultsSection *section = [self sectionInfoForObject:object];
+        NSInteger sectionIdx = section.sectionIdx;
         
         NSArray *existingItems = section.containedObjects;
         NSArray *updatedItems = [[object valueForKeyPath:self.childKey] array];
@@ -281,9 +298,8 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     [deletedObjects addObjectsFromArray:advertisedDeletedObjects.allObjects];
     
     // Sort the inserted/deleted objects, since we need stable indexes for keeping the index set going
-    NSArray *sortDescriptors = self.fetchRequest.sortDescriptors;
-    [deletedObjects sortUsingDescriptors:sortDescriptors];
-    insertedObjects = [insertedObjects sortedArrayUsingDescriptors:sortDescriptors];
+    [deletedObjects sortUsingDescriptors:self.reverseSortDescriptors];
+    insertedObjects = [insertedObjects sortedArrayUsingDescriptors:self.sortDescriptors];
     
     //
     
@@ -308,33 +324,27 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 
 #pragma mark - Section info
 
+- (void)setSections:(NSArray *)sections {
+    _sections = sections;
+    
+    [_sections enumerateObjectsUsingBlock:^(HLHierarchicalResultsSection *section, NSUInteger idx, BOOL *stop) {
+        section.sectionIdx = idx;
+    }];
+}
+
 - (HLHierarchicalResultsSection *)newSectionInfoForObject:(id)object {
     HLHierarchicalResultsSection *section = [[HLHierarchicalResultsSection alloc] init];
     section.object = object;
-    
     section.containedObjects = [[object valueForKey:self.childKey] array];
-    
     return section;
 }
 
-- (HLHierarchicalResultsSection *)sectionInfoForObject:(id)object index:(out NSInteger *)outIndex {
+- (HLHierarchicalResultsSection *)sectionInfoForObject:(id)object {
     // todo: faster
     
-    __block HLHierarchicalResultsSection *returnSection;
-    __block NSInteger returnIdx;
-    
-    [self.sections enumerateObjectsUsingBlock:^(HLHierarchicalResultsSection *section, NSUInteger idx, BOOL *stop) {
-        if (section.object == object) {
-            returnSection = section;
-            returnIdx = idx;
-        }
+    return [self.sections bk_match:^BOOL(HLHierarchicalResultsSection *section) {
+        return section.object == object;
     }];
-    
-    if (outIndex) {
-        *outIndex = returnIdx;
-    }
-    
-    return returnSection;
 }
 
 - (HLHierarchicalResultsSection *)sectionInfoForSection:(NSInteger)section {

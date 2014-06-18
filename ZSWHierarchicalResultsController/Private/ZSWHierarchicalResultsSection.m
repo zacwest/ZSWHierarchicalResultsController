@@ -14,6 +14,14 @@
 
 @implementation HLHierarchicalResultsSection
 
+- (id)init {
+    self = [super init];
+    if (self) {
+        self.sectionIdx = NSNotFound;
+    }
+    return self;
+}
+
 - (NSString *)description {
     return [NSString stringWithFormat:@"<%@: %p; object = %@, contained objects = %@>", NSStringFromClass([self class]), self, self.object, self.containedObjects];
 }
