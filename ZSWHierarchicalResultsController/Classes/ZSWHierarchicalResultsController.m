@@ -75,6 +75,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
                             delegate:(id<HLHierarchicalResultsDelegate>)delegate {
     NSFetchRequest *fetchRequest = [NSFetchRequest fetchRequestWithEntityName:parentObject.entity.name];
     fetchRequest.predicate = [NSPredicate predicateWithFormat:@"self == %@", parentObject];
+    fetchRequest.sortDescriptors = @[ [NSSortDescriptor sortDescriptorWithKey:@"self" ascending:YES] ];
     return [self initWithFetchRequest:fetchRequest childKey:childKey managedObjectContext:context delegate:delegate];
 }
 
@@ -106,6 +107,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 }
 
 #pragma mark - Object observing
+
 - (NSIndexSet *)updateSectionsWithInsertedObjects:(NSArray *)insertedObjects {
     if (insertedObjects.count == 0) {
         return nil;
@@ -192,11 +194,9 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     NSPredicate *fetchRequestPredicate = self.fetchRequest.predicate;
     NSArray *insertedObjects = [advertisedInsertedObjects filteredArrayUsingPredicate:fetchRequestPredicate];
     
-    // Avoiding more memory hits is better than using a bit more memory.
-    const NSInteger capacity = advertisedUpdatedObjects.count + advertisedDeletedObjects.count;
-    
-    NSMutableArray *updatedObjects = [NSMutableArray arrayWithCapacity:capacity];
-    NSMutableArray *deletedObjects = [NSMutableArray arrayWithCapacity:capacity];
+    // Avoiding more memory hits is better than using a bit more memory for deleted.
+    NSMutableArray *updatedObjects = [NSMutableArray arrayWithCapacity:advertisedUpdatedObjects.count];
+    NSMutableArray *deletedObjects = [NSMutableArray arrayWithCapacity:advertisedUpdatedObjects.count + advertisedDeletedObjects.count];
     
     for (NSManagedObject *updatedObject in advertisedUpdatedObjects) {
         if ([fetchRequestPredicate evaluateWithObject:updatedObject]) {
@@ -216,7 +216,6 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     NSIndexSet *deletedSet = [self updateSectionsWithDeletedObjects:deletedObjects];
     
     NSArray *insertedItems, *deletedItems;
-    
     [self updateSectionsWithUpdatedObjects:updatedObjects
                         insertedIndexPaths:&insertedItems
                          deletedIndexPaths:&deletedItems];
@@ -230,12 +229,16 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     }
 }
 
-#pragma mark - Getters
+#pragma mark - Section info
 
 - (HLHierarchicalResultsSection *)newSectionInfoForObject:(id)object {
     HLHierarchicalResultsSection *section = [[HLHierarchicalResultsSection alloc] init];
     section.object = object;
+    
+    // we need to copy the array because the default is a placeholder which dynamically updates
+    // when the object is updated, but we need to manage the updating ourselves
     section.containedObjects = [[[object valueForKey:self.childKey] array] copy];
+    
     return section;
 }
 
@@ -262,6 +265,8 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 - (HLHierarchicalResultsSection *)sectionInfoForSection:(NSInteger)section {
     return self.sections[section];
 }
+
+#pragma mark - Getters
 
 - (NSInteger)numberOfSections {
     return self.sections.count;
