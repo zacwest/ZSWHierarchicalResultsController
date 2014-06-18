@@ -13,6 +13,10 @@
 @property (nonatomic) NSManagedObject *object;
 @property (nonatomic) NSArray *containedObjects;
 
+- (NSInteger)countOfContainedObjects;
+- (id)objectInContainedObjectsAtIndex:(NSUInteger)idx;
+- (id)objectAtIndexedSubscript:(NSUInteger)idx;
+
 - (NSComparisonResult)compare:(HLHierarchicalResultsSection *)anotherSection
          usingSortDescriptors:(NSArray *)sortDescriptors;
 

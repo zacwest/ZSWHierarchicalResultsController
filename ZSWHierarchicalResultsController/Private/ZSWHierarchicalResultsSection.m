@@ -41,4 +41,16 @@
     return result;
 }
 
+- (NSInteger)countOfContainedObjects {
+    return self.containedObjects.count;
+}
+
+- (id)objectInContainedObjectsAtIndex:(NSUInteger)idx {
+    return self.containedObjects[idx];
+}
+
+- (id)objectAtIndexedSubscript:(NSUInteger)idx {
+    return self.containedObjects[idx];
+}
+
 @end

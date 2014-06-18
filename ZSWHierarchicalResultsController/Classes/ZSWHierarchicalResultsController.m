@@ -273,7 +273,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 }
 
 - (NSInteger)numberOfObjectsInSection:(NSInteger)section {
-    return [self sectionInfoForSection:section].containedObjects.count;
+    return [self sectionInfoForSection:section].countOfContainedObjects;
 }
 
 - (id)objectForSection:(NSInteger)section {
@@ -281,7 +281,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 }
 
 - (id)objectAtIndexPath:(NSIndexPath *)indexPath {
-    return [self sectionInfoForSection:indexPath.section].containedObjects[indexPath.item];
+    return [self sectionInfoForSection:indexPath.section][indexPath.item];
 }
 
 - (NSArray *)allObjectsInSection:(NSInteger)section {
