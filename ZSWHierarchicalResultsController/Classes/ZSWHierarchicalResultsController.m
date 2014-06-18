@@ -185,13 +185,54 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 
 // this method guarantees that the out parameters will be unmodified if unchanged
 - (void)updateSectionsWithUpdatedObjects:(NSArray *)updatedObjects
-                      insertedIndexPaths:(out NSArray **)insertedIndexPaths
-                       deletedIndexPaths:(out NSArray **)deletedIndexPaths {
+                      insertedIndexPaths:(out NSArray **)outInsertedIndexPaths
+                       deletedIndexPaths:(out NSArray **)outDeletedIndexPaths {
     if (!updatedObjects.count) {
         return;
     }
     
+    // Remember, we ask our delegates to process deletes before inserts, so we need to also do that
+    // so our index paths match up to the expected locations.
     
+    NSMutableArray *insertedIndexPaths = [NSMutableArray array];
+    NSMutableArray *deletedIndexPaths = [NSMutableArray array];
+    
+    for (NSManagedObject *object in updatedObjects) {
+        NSInteger sectionIdx;
+        HLHierarchicalResultsSection *section = [self sectionInfoForObject:object index:&sectionIdx];
+        
+        NSArray *existingItems = section.containedObjects;
+        NSArray *updatedItems = [[object valueForKeyPath:self.childKey] array];
+        
+        NSSet *existingItemsSet = [NSSet setWithArray:existingItems];
+        NSSet *updatedItemsSet = [NSSet setWithArray:updatedItems];
+        
+        // First, identify the objects that were deleted.
+        [existingItems enumerateObjectsUsingBlock:^(NSManagedObject *existingObject, NSUInteger idx, BOOL *stop) {
+            if (![updatedItemsSet containsObject:existingObject]) {
+                NSIndexPath *indexPath = [NSIndexPath indexPathForItem:idx inSection:sectionIdx];
+                [deletedIndexPaths addObject:indexPath];
+            }
+        }];
+        
+        // Next, identify the objects that were inserted.
+        [updatedItems enumerateObjectsUsingBlock:^(NSManagedObject *updatedObject, NSUInteger idx, BOOL *stop) {
+            if (![existingItemsSet containsObject:updatedObject]) {
+                NSIndexPath *indexPath = [NSIndexPath indexPathForItem:idx inSection:sectionIdx];
+                [insertedIndexPaths addObject:indexPath];
+            }
+        }];
+        
+        section.containedObjects = updatedItems;
+    }
+    
+    if (insertedIndexPaths.count > 0) {
+        *outInsertedIndexPaths = insertedIndexPaths;
+    }
+    
+    if (deletedIndexPaths.count > 0) {
+        *outDeletedIndexPaths = deletedIndexPaths;
+    }
 }
 
 - (void)objectsDidChange:(NSNotification *)notification {
@@ -248,20 +289,20 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     
     NSLog(@"Inserted: %@, updated: %@, deleted: %@", insertedObjects, updatedObjects, deletedObjects);
     
-    NSIndexSet *insertedSet = [self updateSectionsWithInsertedObjects:insertedObjects];
-    NSIndexSet *deletedSet = [self updateSectionsWithDeletedObjects:deletedObjects];
+    NSIndexSet *deletedSections = [self updateSectionsWithDeletedObjects:deletedObjects];
+    NSIndexSet *insertedSections = [self updateSectionsWithInsertedObjects:insertedObjects];
     
-    NSArray *insertedItems, *deletedItems;
+    NSArray *insertedIndexPaths, *deletedIndexPaths;
     [self updateSectionsWithUpdatedObjects:updatedObjects
-                        insertedIndexPaths:&insertedItems
-                         deletedIndexPaths:&deletedItems];
+                        insertedIndexPaths:&insertedIndexPaths
+                         deletedIndexPaths:&deletedIndexPaths];
     
-    if (insertedSet || deletedSet || insertedItems || deletedItems) {
+    if (insertedSections || deletedSections || insertedIndexPaths || deletedIndexPaths) {
         [self.delegate hierarchicalController:self
-                didUpdateWithInsertedSections:insertedSet
-                              deletedSections:deletedSet
-                                insertedItems:insertedItems
-                                 deletedItems:deletedItems];
+                 didUpdateWithDeletedSections:deletedSections
+                             insertedSections:insertedSections
+                                 deletedItems:deletedIndexPaths
+                                insertedItems:insertedIndexPaths];
     }
 }
 
@@ -271,9 +312,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     HLHierarchicalResultsSection *section = [[HLHierarchicalResultsSection alloc] init];
     section.object = object;
     
-    // we need to copy the array because the default is a placeholder which dynamically updates
-    // when the object is updated, but we need to manage the updating ourselves
-    section.containedObjects = [[[object valueForKey:self.childKey] array] copy];
+    section.containedObjects = [[object valueForKey:self.childKey] array];
     
     return section;
 }

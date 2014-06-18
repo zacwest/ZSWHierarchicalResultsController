@@ -10,8 +10,10 @@
 
 @interface HLHierarchicalResultsSection : NSObject
 
-@property (nonatomic) NSManagedObject *object;
-@property (nonatomic) NSArray *containedObjects;
+@property (nonatomic, retain) NSManagedObject *object;
+
+// note this copies because the proxy from core data live-updates and we don't want that
+@property (nonatomic, copy) NSArray *containedObjects;
 
 - (NSInteger)countOfContainedObjects;
 - (id)objectInContainedObjectsAtIndex:(NSUInteger)idx;

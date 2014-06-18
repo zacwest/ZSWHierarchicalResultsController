@@ -14,21 +14,22 @@
  * @brief The controller updated
  *
  * You must process the changes in the order of parameters of this method.
- * For example, instruct your view layer to handle inserts before deletes.
+ * For example, instruct your view layer to handle deletes before inserts.
  *
  * It is by design that individual index paths do not get updates. You must handle
  * this yourself via KVO on the individual objects or some other mechanism.
  *
- * @param insertedSections The sections newly inserted
  * @param deletedsections The sections newly deleted
- * @param insertedIndexPaths The items newly deleted
+ * @param insertedSections The sections newly inserted
  * @param deletedIndexPaths The items newly inserted
+ * @param insertedIndexPaths The items newly deleted
  */
 - (void)hierarchicalController:(HLHierarchicalResultsController *)controller
- didUpdateWithInsertedSections:(NSIndexSet *)insertedSections
-               deletedSections:(NSIndexSet *)deletedSections
-                 insertedItems:(NSArray *)insertedIndexPaths
-                  deletedItems:(NSArray *)deletedIndexPaths;
+ didUpdateWithDeletedSections:(NSIndexSet *)deletedSections
+              insertedSections:(NSIndexSet *)insertedSections
+                  deletedItems:(NSArray *)deletedIndexPaths
+                 insertedItems:(NSArray *)insertedIndexPaths;
+
 @end
 
 @interface HLHierarchicalResultsController : NSObject
