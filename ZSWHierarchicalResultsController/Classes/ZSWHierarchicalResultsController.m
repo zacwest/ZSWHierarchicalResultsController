@@ -220,36 +220,58 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
         
         NSArray *existingItems = sectionInfo.containedObjects;
         NSArray *updatedItems = [[object valueForKeyPath:self.childKey] array];
-        
+
         NSSet *existingItemsSet = [NSSet setWithArray:existingItems];
         NSSet *updatedItemsSet = [NSSet setWithArray:updatedItems];
         
-        __block NSInteger deletesThisObject = 0;
+        NSMutableIndexSet *deletedIndexSet = [NSMutableIndexSet indexSet];
+        NSMutableIndexSet *insertedIndexSet = [NSMutableIndexSet indexSet];
         
-        // First, identify the objects that were deleted.
-        [existingItems enumerateObjectsUsingBlock:^(NSManagedObject *existingObject, NSUInteger idx, BOOL *stop) {
-            if (![updatedItemsSet containsObject:existingObject]) {
-                // the deleted index needs to update on the fly for the number
-                // of deletions we've already processed. however, we're deleting in
-                // a predictable order, so we can offset it by the number of deletes
-                // we've already performed
-                NSInteger deleteIdx = idx - deletesThisObject;
-                
-                NSIndexPath *indexPath = [NSIndexPath indexPathForItem:deleteIdx inSection:sectionIdx];
-                [deletedIndexPaths addObject:indexPath];
-                
-                deletesThisObject++;
+        for (NSInteger existingIdx = 0, updatedIdx = 0;
+             existingIdx < existingItems.count || updatedIdx < updatedItems.count;
+             /* no increment */) {
+            id existingObject = existingIdx < existingItems.count ? existingItems[existingIdx] : nil;
+            id updatedObject = updatedIdx < updatedItems.count ? updatedItems[updatedIdx] : nil;
+            
+            if (updatedObject && ![existingItemsSet containsObject:updatedObject]) {
+                // We inserted this one. Skip this one.
+                [insertedIndexSet addIndex:updatedIdx];
+                updatedIdx++;
+                continue;
             }
-        }];
-        
-        // Next, identify the objects that were inserted.
-        [updatedItems enumerateObjectsUsingBlock:^(NSManagedObject *updatedObject, NSUInteger idx, BOOL *stop) {
-            if (![existingItemsSet containsObject:updatedObject]) {
-                NSIndexPath *indexPath = [NSIndexPath indexPathForItem:idx inSection:sectionIdx];
-                [insertedIndexPaths addObject:indexPath];
+            
+            if (existingObject && ![updatedItemsSet containsObject:existingObject]) {
+                // We deleted this one. Skip this now.
+                [deletedIndexSet addIndex:existingIdx];
+                existingIdx++;
+                continue;
             }
-        }];
+            
+            if (existingObject != updatedObject) {
+                // We moved this object within the list.
+                // We don't support multi-section move, and implementing intra-section move is tough
+                // so let's just consider this a delete and insert
+                [deletedIndexSet addIndex:existingIdx];
+                [insertedIndexSet addIndex:updatedIdx];
+            }
+            
+            existingIdx++;
+            updatedIdx++;
+        }
         
+        // Finally, put together the index paths
+        [insertedIndexSet enumerateIndexesWithOptions:0
+                                           usingBlock:^(NSUInteger idx, BOOL *stop) {
+                                               NSIndexPath *indexPath = [NSIndexPath indexPathForItem:idx inSection:sectionIdx];
+                                               [insertedIndexPaths addObject:indexPath];
+                                           }];
+
+        [deletedIndexSet enumerateIndexesWithOptions:NSEnumerationReverse /* reverse 'cause delete! */
+                                          usingBlock:^(NSUInteger idx, BOOL *stop) {
+                                              NSIndexPath *indexPath = [NSIndexPath indexPathForItem:idx inSection:sectionIdx];
+                                              [deletedIndexPaths addObject:indexPath];
+                                          }];
+
         sectionInfo.containedObjects = updatedItems;
     }
     

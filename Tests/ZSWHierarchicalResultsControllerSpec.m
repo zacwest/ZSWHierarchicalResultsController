@@ -160,8 +160,8 @@ describe(@"HLHierarchicalResultsController", ^{
                             [[delegate expect] hierarchicalController:controller
                                          didUpdateWithDeletedSections:nil
                                                      insertedSections:nil
-                                                         deletedItems:@[ [NSIndexPath indexPathForItem:0 inSection:0],
-                                                                         [NSIndexPath indexPathForItem:1 inSection:0] ]
+                                                         deletedItems:@[ [NSIndexPath indexPathForItem:2 inSection:0],
+                                                                         [NSIndexPath indexPathForItem:0 inSection:0] ]
                                                         insertedItems:@[ [NSIndexPath indexPathForItem:1 inSection:0] ]];
                             [context processPendingChanges];
                         });
@@ -275,11 +275,11 @@ describe(@"HLHierarchicalResultsController", ^{
                                 // but the order that the changes themselves are delivered is undefined
                                 
                                 NSArray *possibleValues = @[
-                                                            @[ [NSIndexPath indexPathForItem:1 inSection:0],
+                                                            @[ [NSIndexPath indexPathForItem:2 inSection:0],
                                                                [NSIndexPath indexPathForItem:1 inSection:0],
                                                                [NSIndexPath indexPathForItem:0 inSection:1] ],
                                                             @[ [NSIndexPath indexPathForItem:0 inSection:1],
-                                                               [NSIndexPath indexPathForItem:1 inSection:0],
+                                                               [NSIndexPath indexPathForItem:2 inSection:0],
                                                                [NSIndexPath indexPathForItem:1 inSection:0] ],
                                                             ];
                                                                
@@ -367,7 +367,186 @@ describe(@"HLHierarchicalResultsController", ^{
     });
     
     describe(@"for a single object", ^{
+        __block CDDay *day;
         
+        beforeEach(^{
+            context = [HLFixtures testingContext];
+            day = [HLFixtures dayInContext:context];
+            [context processPendingChanges];
+            
+            delegate = [OCMockObject mockForProtocol:@protocol(HLHierarchicalResultsDelegate)];
+            
+            controller = [[HLHierarchicalResultsController alloc] initWithParentObject:day
+                                                                              childKey:HLSelector(locationEvents)
+                                                                  managedObjectContext:context
+                                                                              delegate:delegate];
+        });
+        
+        it(@"should start with no items in the day", ^{
+            expect(controller.numberOfSections).to.equal(1);
+            expect([controller numberOfObjectsInSection:0]).to.equal(0);
+        });
+        
+        describe(@"when a couple events are inserted", ^{
+            __block CDLocationEvent *event1, *event2;
+            
+            beforeEach(^{
+                event1 = [HLFixtures locationEventInContext:context];
+                event2 = [HLFixtures locationEventInContext:context];
+                
+                NSMutableOrderedSet *orderedSet = [day mutableOrderedSetValueForKey:HLSelector(locationEvents)];
+                [orderedSet addObjectsFromArray:@[ event1, event2 ]];
+                
+                [[delegate expect] hierarchicalController:controller
+                             didUpdateWithDeletedSections:nil
+                                         insertedSections:nil
+                                             deletedItems:nil
+                                            insertedItems:@[ [NSIndexPath indexPathForItem:0 inSection:0],
+                                                             [NSIndexPath indexPathForItem:1 inSection:0] ]];
+                [context processPendingChanges];
+            });
+            
+            it(@"should inform the delegate about the inserts", ^{
+                [delegate verify];
+            });
+            
+            it(@"should return the right objects and backwards", ^{
+                NSIndexPath *event1IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
+                NSIndexPath *event2IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
+                
+                expect([controller objectAtIndexPath:event1IndexPath]).to.equal(event1);
+                expect([controller objectAtIndexPath:event2IndexPath]).to.equal(event2);
+                
+                expect([controller indexPathForObject:event1]).to.equal(event1IndexPath);
+                expect([controller indexPathForObject:event2]).to.equal(event2IndexPath);
+            });
+            
+            describe(@"when adding a few more events", ^{
+                __block CDLocationEvent *event3, *event4, *event5;
+                
+                beforeEach(^{
+                    event3 = [HLFixtures locationEventInContext:context];
+                    event4 = [HLFixtures locationEventInContext:context];
+                    event5 = [HLFixtures locationEventInContext:context];
+                    
+                    NSMutableOrderedSet *orderedSet = [day mutableOrderedSetValueForKey:HLSelector(locationEvents)];
+                    [orderedSet addObjectsFromArray:@[ event3, event4, event5 ]];
+                    
+                    [[delegate expect] hierarchicalController:controller
+                                 didUpdateWithDeletedSections:nil
+                                             insertedSections:nil
+                                                 deletedItems:nil
+                                                insertedItems:@[ [NSIndexPath indexPathForItem:2 inSection:0],
+                                                                 [NSIndexPath indexPathForItem:3 inSection:0],
+                                                                 [NSIndexPath indexPathForItem:4 inSection:0] ]];
+                    
+                    [context processPendingChanges];
+                });
+                
+                it(@"should inform the delegate", ^{
+                    [delegate verify];
+                });
+                
+                describe(@"and then we move 2 items within the list", ^{
+                    beforeEach(^{
+                        NSMutableOrderedSet *orderedSet = [day mutableOrderedSetValueForKey:HLSelector(locationEvents)];
+                        [orderedSet exchangeObjectAtIndex:1 withObjectAtIndex:3];
+                        
+                        [[delegate expect] hierarchicalController:controller
+                                     didUpdateWithDeletedSections:nil
+                                                 insertedSections:nil
+                                                     deletedItems:@[ [NSIndexPath indexPathForItem:3 inSection:0],
+                                                                     [NSIndexPath indexPathForItem:1 inSection:0] ]
+                                                    insertedItems:@[ [NSIndexPath indexPathForItem:1 inSection:0],
+                                                                     [NSIndexPath indexPathForItem:3 inSection:0] ]];
+                        [context processPendingChanges];
+                    });
+                    
+                    it(@"should inform the delegate", ^{
+                        [delegate verify];
+                    });
+                });
+            });
+            
+            describe(@"when the order of the objects changes", ^{
+                beforeEach(^{
+                    NSMutableOrderedSet *orderedSet = [day mutableOrderedSetValueForKey:HLSelector(locationEvents)];
+                    [orderedSet exchangeObjectAtIndex:0 withObjectAtIndex:1];
+                    
+                    [[delegate expect] hierarchicalController:controller
+                                 didUpdateWithDeletedSections:nil
+                                             insertedSections:nil
+                                                 deletedItems:@[ [NSIndexPath indexPathForItem:1 inSection:0],
+                                                                 [NSIndexPath indexPathForItem:0 inSection:0] ]
+                                                insertedItems:@[ [NSIndexPath indexPathForItem:0 inSection:0],
+                                                                 [NSIndexPath indexPathForItem:1 inSection:0] ]];
+                    [context processPendingChanges];
+                });
+                
+                it(@"should inform the delegate", ^{
+                    [delegate verify];
+                });
+                
+                it(@"should return the correct counts in the section", ^{
+                    expect([controller numberOfObjectsInSection:0]).to.equal(2);
+                });
+                
+                it(@"should return the right objects and backwards", ^{
+                    NSIndexPath *event1IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
+                    NSIndexPath *event2IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
+                    
+                    expect([controller objectAtIndexPath:event1IndexPath]).to.equal(event1);
+                    expect([controller objectAtIndexPath:event2IndexPath]).to.equal(event2);
+                    
+                    expect([controller indexPathForObject:event1]).to.equal(event1IndexPath);
+                    expect([controller indexPathForObject:event2]).to.equal(event2IndexPath);
+                });
+            });
+            
+            describe(@"when the order changes and we insert at the same time", ^{
+                __block CDLocationEvent *event3;
+                
+                beforeEach(^{
+                    event3 = [HLFixtures locationEventInContext:context];
+                    
+                    NSMutableOrderedSet *orderedSet = [day mutableOrderedSetValueForKey:HLSelector(locationEvents)];
+                    [orderedSet exchangeObjectAtIndex:0 withObjectAtIndex:1];
+                    [orderedSet insertObject:event3 atIndex:1];
+                    
+                    [[delegate expect] hierarchicalController:controller
+                                 didUpdateWithDeletedSections:nil
+                                             insertedSections:nil
+                                                 deletedItems:@[ [NSIndexPath indexPathForItem:1 inSection:0 ],
+                                                                 [NSIndexPath indexPathForItem:0 inSection:0] ]
+                                                insertedItems:@[ [NSIndexPath indexPathForItem:0 inSection:0],
+                                                                 [NSIndexPath indexPathForItem:1 inSection:0],
+                                                                 [NSIndexPath indexPathForItem:2 inSection:0] ]];
+                    [context processPendingChanges];
+                });
+                
+                it(@"should inform the delegate", ^{
+                    [delegate verify];
+                });
+                
+                it(@"should return the correct counts in the section", ^{
+                    expect([controller numberOfObjectsInSection:0]).to.equal(3);
+                });
+                
+                it(@"should return the right objects and backwards", ^{
+                    NSIndexPath *event1IndexPath = [NSIndexPath indexPathForItem:2 inSection:0];
+                    NSIndexPath *event2IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
+                    NSIndexPath *event3IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
+                    
+                    expect([controller objectAtIndexPath:event1IndexPath]).to.equal(event1);
+                    expect([controller objectAtIndexPath:event2IndexPath]).to.equal(event2);
+                    expect([controller objectAtIndexPath:event3IndexPath]).to.equal(event3);
+                    
+                    expect([controller indexPathForObject:event1]).to.equal(event1IndexPath);
+                    expect([controller indexPathForObject:event2]).to.equal(event2IndexPath);
+                    expect([controller indexPathForObject:event3]).to.equal(event3IndexPath);
+                });
+            });
+        });
     });
 });
 
