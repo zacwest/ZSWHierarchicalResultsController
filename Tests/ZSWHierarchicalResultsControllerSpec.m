@@ -303,6 +303,22 @@ describe(@"HLHierarchicalResultsController", ^{
                             expect([controller numberOfObjectsInSection:0]).to.equal(1);
                             expect([controller numberOfObjectsInSection:1]).to.equal(1);
                         });
+                        
+                        it(@"should return the right objects and backwards in section 0", ^{
+                            NSIndexPath *event1IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
+                            
+                            expect([controller objectAtIndexPath:event1IndexPath]).to.equal(day1Event1);
+                            
+                            expect([controller indexPathForObject:day1Event1]).to.equal(event1IndexPath);
+                        });
+                        
+                        it(@"should return the right objects and backwards in section 1", ^{
+                            NSIndexPath *event2IndexPath = [NSIndexPath indexPathForItem:0 inSection:1];
+                            
+                            expect([controller objectAtIndexPath:event2IndexPath]).to.equal(day2Event2);
+                            
+                            expect([controller indexPathForObject:day2Event2]).to.equal(event2IndexPath);
+                        });
                     });
                     
                     describe(@"when inserting a section", ^{
@@ -328,6 +344,16 @@ describe(@"HLHierarchicalResultsController", ^{
                             [delegate verify];
                         });
                         
+                        it(@"should return the right number of sections", ^{
+                            expect(controller.numberOfSections).to.equal(3);
+                        });
+                        
+                        it(@"should return the right counts for each section", ^{
+                            expect([controller numberOfObjectsInSection:0]).to.equal(3);
+                            expect([controller numberOfObjectsInSection:1]).to.equal(2);
+                            expect([controller numberOfObjectsInSection:2]).to.equal(1);
+                        });
+                        
                         describe(@"when deleting 2 days in core data", ^{
                             beforeEach(^{
                                 [context deleteObject:day1];
@@ -347,6 +373,14 @@ describe(@"HLHierarchicalResultsController", ^{
                             
                             it(@"should inform the delegate", ^{
                                 [delegate verify];
+                            });
+                            
+                            it(@"should return the right number of sections", ^{
+                                expect(controller.numberOfSections).to.equal(1);
+                            });
+                            
+                            it(@"should return the right counts for each section", ^{
+                                expect([controller numberOfObjectsInSection:0]).to.equal(2);
                             });
                         });
                         
@@ -490,6 +524,10 @@ describe(@"HLHierarchicalResultsController", ^{
                 [delegate verify];
             });
             
+            it(@"should return the right counts in section", ^{
+                expect([controller numberOfObjectsInSection:0]).to.equal(2);
+            });
+            
             it(@"should return the right objects and backwards", ^{
                 NSIndexPath *event1IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
                 NSIndexPath *event2IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
@@ -527,6 +565,30 @@ describe(@"HLHierarchicalResultsController", ^{
                     [delegate verify];
                 });
                 
+                it(@"should return the right counts in section", ^{
+                    expect([controller numberOfObjectsInSection:0]).to.equal(5);
+                });
+                
+                it(@"should return the right objects and backwards", ^{
+                    NSIndexPath *event1IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
+                    NSIndexPath *event2IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
+                    NSIndexPath *event3IndexPath = [NSIndexPath indexPathForItem:2 inSection:0];
+                    NSIndexPath *event4IndexPath = [NSIndexPath indexPathForItem:3 inSection:0];
+                    NSIndexPath *event5IndexPath = [NSIndexPath indexPathForItem:4 inSection:0];
+                    
+                    expect([controller objectAtIndexPath:event1IndexPath]).to.equal(event1);
+                    expect([controller objectAtIndexPath:event2IndexPath]).to.equal(event2);
+                    expect([controller objectAtIndexPath:event3IndexPath]).to.equal(event3);
+                    expect([controller objectAtIndexPath:event4IndexPath]).to.equal(event4);
+                    expect([controller objectAtIndexPath:event5IndexPath]).to.equal(event5);
+                    
+                    expect([controller indexPathForObject:event1]).to.equal(event1IndexPath);
+                    expect([controller indexPathForObject:event2]).to.equal(event2IndexPath);
+                    expect([controller indexPathForObject:event3]).to.equal(event3IndexPath);
+                    expect([controller indexPathForObject:event4]).to.equal(event4IndexPath);
+                    expect([controller indexPathForObject:event5]).to.equal(event5IndexPath);
+                });
+
                 describe(@"and then we move 2 items within the list", ^{
                     beforeEach(^{
                         NSMutableOrderedSet *orderedSet = [day mutableOrderedSetValueForKey:HLSelector(locationEvents)];
@@ -544,6 +606,30 @@ describe(@"HLHierarchicalResultsController", ^{
                     
                     it(@"should inform the delegate", ^{
                         [delegate verify];
+                    });
+                    
+                    it(@"should return the right counts in section", ^{
+                        expect([controller numberOfObjectsInSection:0]).to.equal(5);
+                    });
+                    
+                    it(@"should return the right objects and backwards", ^{
+                        NSIndexPath *event1IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
+                        NSIndexPath *event2IndexPath = [NSIndexPath indexPathForItem:3 inSection:0];
+                        NSIndexPath *event3IndexPath = [NSIndexPath indexPathForItem:2 inSection:0];
+                        NSIndexPath *event4IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
+                        NSIndexPath *event5IndexPath = [NSIndexPath indexPathForItem:4 inSection:0];
+                        
+                        expect([controller objectAtIndexPath:event1IndexPath]).to.equal(event1);
+                        expect([controller objectAtIndexPath:event2IndexPath]).to.equal(event2);
+                        expect([controller objectAtIndexPath:event3IndexPath]).to.equal(event3);
+                        expect([controller objectAtIndexPath:event4IndexPath]).to.equal(event4);
+                        expect([controller objectAtIndexPath:event5IndexPath]).to.equal(event5);
+                        
+                        expect([controller indexPathForObject:event1]).to.equal(event1IndexPath);
+                        expect([controller indexPathForObject:event2]).to.equal(event2IndexPath);
+                        expect([controller indexPathForObject:event3]).to.equal(event3IndexPath);
+                        expect([controller indexPathForObject:event4]).to.equal(event4IndexPath);
+                        expect([controller indexPathForObject:event5]).to.equal(event5IndexPath);
                     });
                 });
             });
