@@ -23,6 +23,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 
 @property (nonatomic, strong) NSArray *sortDescriptors;
 @property (nonatomic, strong) NSArray *reverseSortDescriptors;
+@property (nonatomic, strong) NSArray *sortDescriptorKeys;
 
 @end
 
@@ -76,6 +77,10 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
         self.sortDescriptors = updatedFetchRequest.sortDescriptors;
         self.reverseSortDescriptors = [self.sortDescriptors bk_map:^id(NSSortDescriptor *sortDescriptor) {
             return [sortDescriptor reversedSortDescriptor];
+        }];
+        
+        self.sortDescriptorKeys = [self.sortDescriptors bk_map:^id(NSSortDescriptor *sortDescriptor) {
+            return sortDescriptor.key;
         }];
         
         self.childKey = childKey;
@@ -309,7 +314,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     // and if it's inserted but doesn't match, don't include it.
     
     NSPredicate *fetchRequestPredicate = self.fetchRequest.predicate;
-    NSArray *insertedObjects = [advertisedInsertedObjects filteredSetUsingPredicate:fetchRequestPredicate].allObjects;
+    NSMutableArray *insertedObjects = [NSMutableArray arrayWithArray:[advertisedInsertedObjects filteredSetUsingPredicate:fetchRequestPredicate].allObjects];
     
     // Avoiding more memory hits is better than using a bit more memory for deleted.
     NSMutableArray *updatedObjects = [NSMutableArray arrayWithCapacity:advertisedUpdatedObjects.count];
@@ -317,7 +322,16 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     
     for (NSManagedObject *updatedObject in advertisedUpdatedObjects) {
         if ([fetchRequestPredicate evaluateWithObject:updatedObject]) {
-            [updatedObjects addObject:updatedObject];
+            // The object still matches the predicate, cool.
+            // Now we need to make sure its sort order didn't change, because if it did, we need to move it.
+            // However, we handle moving sections by deleting and inserting, so we can test if any of the keys
+            // changed the sorting.
+            if ([updatedObject.changedValuesForCurrentEvent.allKeys firstObjectCommonWithArray:self.sortDescriptorKeys]) {
+                [deletedObjects addObject:updatedObject];
+                [insertedObjects addObject:updatedObject];
+            } else {
+                [updatedObjects addObject:updatedObject];
+            }
         } else {
             [deletedObjects addObject:updatedObject];
         }

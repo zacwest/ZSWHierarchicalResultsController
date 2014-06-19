@@ -349,6 +349,40 @@ describe(@"HLHierarchicalResultsController", ^{
                                 [delegate verify];
                             });
                         });
+                        
+                        describe(@"when the sections change their sorting key to the same value", ^{
+                            beforeEach(^{
+                                day1.sectionIdentifier = @"1";
+                                
+                                [[delegate reject] hierarchicalController:controller
+                                             didUpdateWithDeletedSections:OCMOCK_ANY
+                                                         insertedSections:OCMOCK_ANY
+                                                             deletedItems:OCMOCK_ANY
+                                                            insertedItems:OCMOCK_ANY];
+                                [context processPendingChanges];
+                            });
+                            
+                            it(@"should not call the delegate at all", ^{
+                                [delegate verify];
+                            });
+                        });
+                        
+                        describe(@"when the sections change their sort order", ^{
+                            beforeEach(^{
+                                day1.sectionIdentifier = @"9";
+                                
+                                [[delegate expect] hierarchicalController:controller
+                                             didUpdateWithDeletedSections:[NSIndexSet indexSetWithIndex:0]
+                                                         insertedSections:[NSIndexSet indexSetWithIndex:2]
+                                                             deletedItems:nil
+                                                            insertedItems:nil];
+                                [context processPendingChanges];
+                            });
+                            
+                            it(@"should inform the delegate", ^{
+                                [delegate verify];
+                            });
+                        });
                     });
                     
                     describe(@"when the first section no longer matches the predicate and a new day is inserted", ^{
