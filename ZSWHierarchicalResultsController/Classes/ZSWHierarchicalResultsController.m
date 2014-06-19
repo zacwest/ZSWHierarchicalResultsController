@@ -146,6 +146,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
         return nil;
     }
     
+    // we must operate on a sorted list because we depend on inserts going into their index set in a stable order
     insertedObjects = [insertedObjects sortedArrayUsingDescriptors:self.sortDescriptors];
     
     NSMutableArray *updatedSections = [NSMutableArray arrayWithArray:self.sections];
@@ -182,6 +183,9 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
         return nil;
     }
     
+    // we must operate on a *reverse* sorted list because we depend on indexes going in *backwards*
+    // think about the delete callbacks: we're modifying an array (or so) that needs to know what indexes
+    // to delete, and going forwards would produce the wrong numbers (since indexes change during delete)
     deletedObjects = [deletedObjects sortedArrayUsingDescriptors:self.reverseSortDescriptors];
     
     NSMutableArray *updatedSections = [NSMutableArray arrayWithArray:self.sections];
