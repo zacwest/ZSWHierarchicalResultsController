@@ -305,6 +305,52 @@ describe(@"HLHierarchicalResultsController", ^{
                         });
                     });
                     
+                    describe(@"when inserting a section", ^{
+                        __block CDDay *day3;
+                        __block CDLocationEvent *day3Event1;
+                        
+                        beforeEach(^{
+                            day3 = [HLFixtures dayInContext:context];
+                            day3.sectionIdentifier = @"3";
+                            
+                            day3Event1 = [HLFixtures locationEventInContext:context];
+                            [[day3 mutableOrderedSetValueForKey:HLSelector(locationEvents)] addObject:day3Event1];
+
+                            [[delegate expect] hierarchicalController:controller
+                                         didUpdateWithDeletedSections:nil
+                                                     insertedSections:[NSIndexSet indexSetWithIndex:2]
+                                                         deletedItems:nil
+                                                        insertedItems:nil];
+                            [context processPendingChanges];
+                        });
+                        
+                        it(@"should inform the delegate", ^{
+                            [delegate verify];
+                        });
+                        
+                        describe(@"when deleting 2 days in core data", ^{
+                            beforeEach(^{
+                                [context deleteObject:day1];
+                                [context deleteObject:day3];
+                                
+                                NSMutableIndexSet *deleteIndexSet = [NSMutableIndexSet indexSet];
+                                [deleteIndexSet addIndex:0];
+                                [deleteIndexSet addIndex:2];
+                                
+                                [[delegate expect] hierarchicalController:controller
+                                             didUpdateWithDeletedSections:deleteIndexSet
+                                                         insertedSections:nil
+                                                             deletedItems:nil
+                                                            insertedItems:nil];
+                                [context processPendingChanges];
+                            });
+                            
+                            it(@"should inform the delegate", ^{
+                                [delegate verify];
+                            });
+                        });
+                    });
+                    
                     describe(@"when the first section no longer matches the predicate and a new day is inserted", ^{
                         __block CDDay *day3;
                         __block CDLocationEvent *day3Event1;
