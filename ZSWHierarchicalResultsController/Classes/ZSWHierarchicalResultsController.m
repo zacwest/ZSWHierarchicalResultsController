@@ -130,9 +130,9 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 - (NSComparator)comparatorForSections {
     NSArray *sortDescriptors = self.sortDescriptors;
     
-    return ^NSComparisonResult(HLHierarchicalResultsSection *section1,
-                               HLHierarchicalResultsSection *section2) {
-        return [section1 compare:section2 usingSortDescriptors:sortDescriptors];
+    return ^NSComparisonResult(HLHierarchicalResultsSection *sectionInfo1,
+                               HLHierarchicalResultsSection *sectionInfo2) {
+        return [sectionInfo1 compare:sectionInfo2 usingSortDescriptors:sortDescriptors];
     };
 }
 
@@ -155,14 +155,14 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     for (id insertedObject in insertedObjects) {
         // note: section indices on section objects are not valid in this method
         
-        HLHierarchicalResultsSection *section = [self newSectionInfoForObject:insertedObject];
-        NSInteger insertIdx = [updatedSections indexOfObject:section
+        HLHierarchicalResultsSection *sectionInfo = [self newSectionInfoForObject:insertedObject];
+        NSInteger insertIdx = [updatedSections indexOfObject:sectionInfo
                                                inSortedRange:NSMakeRange(lastInsertedIdx, updatedSections.count - lastInsertedIdx)
                                                      options:NSBinarySearchingInsertionIndex
                                              usingComparator:comparator];
         
         [insertedSet addIndex:insertIdx];
-        [updatedSections insertObject:section atIndex:insertIdx];
+        [updatedSections insertObject:sectionInfo atIndex:insertIdx];
         
         // we keep the last inserted index since we're inserting in order,
         // this way we can speed up the math a bit
@@ -189,8 +189,8 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     for (id deletedObject in deletedObjects) {
         // note: section indices on section objects are not valid in this method
         // but since we're going backwards, our indices are valid before our current delete point
-        HLHierarchicalResultsSection *section = [self sectionInfoForObject:deletedObject];
-        [deletedSet addIndex:section.sectionIdx];
+        HLHierarchicalResultsSection *sectionInfo = [self sectionInfoForObject:deletedObject];
+        [deletedSet addIndex:sectionInfo.sectionIdx];
     }
     
     [updatedSections removeObjectsAtIndexes:deletedSet];
@@ -215,20 +215,30 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     NSMutableArray *deletedIndexPaths = [NSMutableArray array];
     
     for (NSManagedObject *object in updatedObjects) {
-        HLHierarchicalResultsSection *section = [self sectionInfoForObject:object];
-        NSInteger sectionIdx = section.sectionIdx;
+        HLHierarchicalResultsSection *sectionInfo = [self sectionInfoForObject:object];
+        NSInteger sectionIdx = sectionInfo.sectionIdx;
         
-        NSArray *existingItems = section.containedObjects;
+        NSArray *existingItems = sectionInfo.containedObjects;
         NSArray *updatedItems = [[object valueForKeyPath:self.childKey] array];
         
         NSSet *existingItemsSet = [NSSet setWithArray:existingItems];
         NSSet *updatedItemsSet = [NSSet setWithArray:updatedItems];
         
+        __block NSInteger deletesThisObject = 0;
+        
         // First, identify the objects that were deleted.
         [existingItems enumerateObjectsUsingBlock:^(NSManagedObject *existingObject, NSUInteger idx, BOOL *stop) {
             if (![updatedItemsSet containsObject:existingObject]) {
-                NSIndexPath *indexPath = [NSIndexPath indexPathForItem:idx inSection:sectionIdx];
+                // the deleted index needs to update on the fly for the number
+                // of deletions we've already processed. however, we're deleting in
+                // a predictable order, so we can offset it by the number of deletes
+                // we've already performed
+                NSInteger deleteIdx = idx - deletesThisObject;
+                
+                NSIndexPath *indexPath = [NSIndexPath indexPathForItem:deleteIdx inSection:sectionIdx];
                 [deletedIndexPaths addObject:indexPath];
+                
+                deletesThisObject++;
             }
         }];
         
@@ -240,7 +250,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
             }
         }];
         
-        section.containedObjects = updatedItems;
+        sectionInfo.containedObjects = updatedItems;
     }
     
     if (insertedIndexPaths.count > 0) {
@@ -327,28 +337,33 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 - (void)setSections:(NSArray *)sections {
     _sections = sections;
     
-    [_sections enumerateObjectsUsingBlock:^(HLHierarchicalResultsSection *section, NSUInteger idx, BOOL *stop) {
-        section.sectionIdx = idx;
+    [_sections enumerateObjectsUsingBlock:^(HLHierarchicalResultsSection *sectionInfo, NSUInteger idx, BOOL *stop) {
+        sectionInfo.sectionIdx = idx;
     }];
 }
 
 - (HLHierarchicalResultsSection *)newSectionInfoForObject:(id)object {
-    HLHierarchicalResultsSection *section = [[HLHierarchicalResultsSection alloc] init];
-    section.object = object;
-    section.containedObjects = [[object valueForKey:self.childKey] array];
-    return section;
+    HLHierarchicalResultsSection *sectionInfo = [[HLHierarchicalResultsSection alloc] init];
+    sectionInfo.object = object;
+    sectionInfo.containedObjects = [[object valueForKey:self.childKey] array];
+    return sectionInfo;
 }
 
 - (HLHierarchicalResultsSection *)sectionInfoForObject:(id)object {
-    // todo: faster
+    // todo: faster; remember this is a sorted array
+    // we can either use a binary search or store a map from object to section
     
-    return [self.sections bk_match:^BOOL(HLHierarchicalResultsSection *section) {
-        return section.object == object;
+    return [self.sections bk_match:^BOOL(HLHierarchicalResultsSection *sectionInfo) {
+        return sectionInfo.object == object;
     }];
 }
 
 - (HLHierarchicalResultsSection *)sectionInfoForSection:(NSInteger)section {
-    return self.sections[section];
+    if (section < self.sections.count) {
+        return self.sections[section];
+    } else {
+        return nil;
+    }
 }
 
 #pragma mark - Getters
@@ -359,7 +374,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 
 - (NSInteger)numberOfObjectsInSection:(NSInteger)section {
     HLHierarchicalResultsSection *sectionInfo = [self sectionInfoForSection:section];
-    if (!section) {
+    if (!sectionInfo) {
         DDLogError(@"Asked for count of section %zd which is out of bounds", section);
         return -1;
     }
@@ -378,40 +393,40 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 }
 
 - (NSInteger)sectionForParentObject:(id)parentObject {
-    HLHierarchicalResultsSection *section = [self sectionInfoForObject:parentObject];
-    if (!section) {
+    HLHierarchicalResultsSection *sectionInfo = [self sectionInfoForObject:parentObject];
+    if (!sectionInfo) {
         DDLogError(@"Asked for section of parent object %@ but not found", parentObject);
         return NSNotFound;
     }
     
-    return section.sectionIdx;
+    return sectionInfo.sectionIdx;
 }
 
 - (id)objectAtIndexPath:(NSIndexPath *)indexPath {
-    HLHierarchicalResultsSection *section = [self sectionInfoForSection:indexPath.section];
-    if (!section) {
+    HLHierarchicalResultsSection *sectionInfo = [self sectionInfoForSection:indexPath.section];
+    if (!sectionInfo) {
         DDLogError(@"Asked for object in section %zd (index path %@) but out of bounds", indexPath.section, indexPath);
         return nil;
     }
     
-    return section[indexPath.item];
+    return sectionInfo[indexPath.item];
 }
 
 - (NSIndexPath *)indexPathForObject:(id)object {
     id parentObject = [object valueForKey:self.inverseChildKey];
-    HLHierarchicalResultsSection *section = [self sectionInfoForObject:parentObject];
-    if (!section) {
+    HLHierarchicalResultsSection *sectionInfo = [self sectionInfoForObject:parentObject];
+    if (!sectionInfo) {
         DDLogError(@"Asked for an object %@ which had no section for parent object %@", object, parentObject);
         return nil;
     }
     
-    NSInteger itemIdx = [section.containedObjects indexOfObject:object];
+    NSInteger itemIdx = [sectionInfo.containedObjects indexOfObject:object];
     if (itemIdx == NSNotFound) {
-        DDLogError(@"Asked for an object %@ which had a section %@ but wasn't in containedObjects %@", object, section, section.containedObjects);
+        DDLogError(@"Asked for an object %@ which had a section %@ but wasn't in containedObjects %@", object, sectionInfo, sectionInfo.containedObjects);
         return nil;
     }
     
-    return [NSIndexPath indexPathForItem:itemIdx inSection:section.sectionIdx];
+    return [NSIndexPath indexPathForItem:itemIdx inSection:sectionInfo.sectionIdx];
 }
 
 - (NSArray *)allObjectsInSection:(NSInteger)section {
