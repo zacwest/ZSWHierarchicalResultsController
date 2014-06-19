@@ -141,9 +141,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
         return nil;
     }
     
-#ifdef CONFIGURATION_Debug
-    NSAssert([insertedObjects isEqualToArray:[insertedObjects sortedArrayUsingDescriptors:self.sortDescriptors]], @"This method must be passed sorted objects to keep stable indexes in the index set (otherwise we could have 2 inserts on a single index, which the index set coalesces)");
-#endif
+    insertedObjects = [insertedObjects sortedArrayUsingDescriptors:self.sortDescriptors];
     
     NSMutableArray *updatedSections = [NSMutableArray arrayWithArray:self.sections];
     NSMutableIndexSet *insertedSet = [NSMutableIndexSet indexSet];
@@ -178,10 +176,8 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     if (deletedObjects.count == 0) {
         return nil;
     }
-
-#ifdef CONFIGURATION_Debug
-    NSAssert([deletedObjects isEqualToArray:[deletedObjects sortedArrayUsingDescriptors:self.reverseSortDescriptors]], @"This method must be passed sorted objects to keep stable indexes in the index set (otherwise we could have 2 inserts on a single index, which the index set coalesces)");
-#endif
+    
+    deletedObjects = [deletedObjects sortedArrayUsingDescriptors:self.reverseSortDescriptors];
     
     NSMutableArray *updatedSections = [NSMutableArray arrayWithArray:self.sections];
     NSMutableIndexSet *deletedSet = [NSMutableIndexSet indexSet];
@@ -328,11 +324,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     }
     
     [deletedObjects addObjectsFromArray:advertisedDeletedObjects.allObjects];
-    
-    // Sort the inserted/deleted objects, since we need stable indexes for keeping the index set going
-    [deletedObjects sortUsingDescriptors:self.reverseSortDescriptors];
-    insertedObjects = [insertedObjects sortedArrayUsingDescriptors:self.sortDescriptors];
-    
+
     //
     
     NSLog(@"Inserted: %@, updated: %@, deleted: %@", insertedObjects, updatedObjects, deletedObjects);
