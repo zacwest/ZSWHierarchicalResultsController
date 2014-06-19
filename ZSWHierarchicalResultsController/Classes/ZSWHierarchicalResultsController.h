@@ -32,6 +32,17 @@
 
 @end
 
+/*!
+ * @brief An NSFetchedResultsController-like class based on object hierarchies
+ *
+ * This class watches for changes on a particular fetch request's objects and considers
+ * them to be parents in a two-deep hierarchy. Each parent object is represented
+ * by a section, and the children of the parent object are items in that section.
+ *
+ * This class is designed to function with a \ref UICollectionView but can be used for
+ * other areas as well, but the delegate methods in \ref HLHierarchicalResultsDelegate aim
+ * to make working with the collection view easy.
+ */
 @interface HLHierarchicalResultsController : NSObject
 
 #pragma mark - Creation
@@ -79,7 +90,7 @@
  * This count does not include the object representing the section.
  * This may be 0 for sections without any contents.
  *
- * @return Number of objects in the section: [0,n]
+ * @return Number of objects in the section: [0,n], or -1 if out of bounds
  */
 - (NSInteger)numberOfObjectsInSection:(NSInteger)section;
 
@@ -87,15 +98,33 @@
  * @brief Object representing a section
  *
  * This is the parent object for the objects within the section.
+ *
+ * @return The parent object, or \a nil if out of bounds
  */
-- (id)objectForSection:(NSInteger)section;
+- (id)parentObjectForSection:(NSInteger)section;
+
+/*!
+ * @brief Section index for a parent object
+ *
+ * @return The index [0,n] of the object if found, \ref NSNotFound otherwise
+ */
+- (NSInteger)sectionForParentObject:(id)parentObject;
 
 /*!
  * @brief Object within a section
  *
  * This gets the object in section indexPath.section at index indexPath.item.
+ *
+ * @return The object at the index path, or \a nil if out of bounds
  */
 - (id)objectAtIndexPath:(NSIndexPath *)indexPath;
+
+/*!
+ * @brief Index path for an object in a section
+ *
+ * @return The index path if found, \a nil otherwise
+ */
+- (NSIndexPath *)indexPathForObject:(id)object;
 
 /*!
  * @brief All objects in a section
@@ -105,7 +134,7 @@
  *
  * This does not include the object for the section.
  *
- * @return Array of the objects in the section
+ * @return Array of the objects in the section, or nil if out of bounds
  */
 - (NSArray *)allObjectsInSection:(NSInteger)section;
 

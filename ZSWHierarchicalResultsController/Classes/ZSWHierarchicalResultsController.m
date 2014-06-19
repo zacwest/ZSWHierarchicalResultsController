@@ -358,19 +358,70 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 }
 
 - (NSInteger)numberOfObjectsInSection:(NSInteger)section {
-    return [self sectionInfoForSection:section].countOfContainedObjects;
+    HLHierarchicalResultsSection *sectionInfo = [self sectionInfoForSection:section];
+    if (!section) {
+        DDLogError(@"Asked for count of section %zd which is out of bounds", section);
+        return -1;
+    }
+    
+    return sectionInfo.countOfContainedObjects;
 }
 
-- (id)objectForSection:(NSInteger)section {
-    return [self sectionInfoForSection:section].object;
+- (id)parentObjectForSection:(NSInteger)section {
+    HLHierarchicalResultsSection *sectionInfo = [self sectionInfoForSection:section];
+    if (!sectionInfo) {
+        DDLogError(@"Asked for parent object of section %zd which is out of bounds", section);
+        return nil;
+    }
+    
+    return sectionInfo.object;
+}
+
+- (NSInteger)sectionForParentObject:(id)parentObject {
+    HLHierarchicalResultsSection *section = [self sectionInfoForObject:parentObject];
+    if (!section) {
+        DDLogError(@"Asked for section of parent object %@ but not found", parentObject);
+        return NSNotFound;
+    }
+    
+    return section.sectionIdx;
 }
 
 - (id)objectAtIndexPath:(NSIndexPath *)indexPath {
-    return [self sectionInfoForSection:indexPath.section][indexPath.item];
+    HLHierarchicalResultsSection *section = [self sectionInfoForSection:indexPath.section];
+    if (!section) {
+        DDLogError(@"Asked for object in section %zd (index path %@) but out of bounds", indexPath.section, indexPath);
+        return nil;
+    }
+    
+    return section[indexPath.item];
+}
+
+- (NSIndexPath *)indexPathForObject:(id)object {
+    id parentObject = [object valueForKey:self.inverseChildKey];
+    HLHierarchicalResultsSection *section = [self sectionInfoForObject:parentObject];
+    if (!section) {
+        DDLogError(@"Asked for an object %@ which had no section for parent object %@", object, parentObject);
+        return nil;
+    }
+    
+    NSInteger itemIdx = [section.containedObjects indexOfObject:object];
+    if (itemIdx == NSNotFound) {
+        DDLogError(@"Asked for an object %@ which had a section %@ but wasn't in containedObjects %@", object, section, section.containedObjects);
+        return nil;
+    }
+    
+    return [NSIndexPath indexPathForItem:itemIdx inSection:section.sectionIdx];
 }
 
 - (NSArray *)allObjectsInSection:(NSInteger)section {
-    return [self sectionInfoForSection:section].containedObjects;
+    HLHierarchicalResultsSection *sectionInfo = [self sectionInfoForSection:section];
+    if (!sectionInfo) {
+        DDLogError(@"Asked for section %zd which is out of bounds", section);
+        return nil;
+    }
+    
+    return sectionInfo.containedObjects;
 }
 
 @end

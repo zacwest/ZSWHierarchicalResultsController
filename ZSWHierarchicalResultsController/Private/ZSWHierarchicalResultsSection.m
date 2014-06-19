@@ -8,6 +8,8 @@
 
 #import "HLHierarchicalResultsSection.h"
 
+HLDefineLogLevel(LOG_LEVEL_VERBOSE);
+
 @interface HLHierarchicalResultsSection()
 @property (nonatomic, readwrite) NSArray *sortDescriptors;
 @end
@@ -54,11 +56,17 @@
 }
 
 - (id)objectInContainedObjectsAtIndex:(NSUInteger)idx {
+    // this keeps the same error-throwing behavior as accessing the array
     return self.containedObjects[idx];
 }
 
 - (id)objectAtIndexedSubscript:(NSUInteger)idx {
-    return self.containedObjects[idx];
+    if (idx < self.containedObjects.count) {
+        return self.containedObjects[idx];
+    } else {
+        DDLogError(@"Asked for object at idx %zd in section %zd but out of bounds", idx, self.sectionIdx);
+        return nil;
+    }
 }
 
 @end
