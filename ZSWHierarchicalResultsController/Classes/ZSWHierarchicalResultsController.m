@@ -53,23 +53,31 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     
     NSRelationshipDescription *relationship = entity.relationshipsByName[childKey];
     
+    // test for an invalid childkey
     NSAssert(relationship != nil,
              @"childKey %@ must be a relationship on %@", childKey, entity);
     
+    // we require ordered because we display in an order. if we don't want this anymore, we need to
+    // have the consumers give us sort descriptors and handle that
     NSAssert(relationship.isOrdered,
              @"childKey %@ must be ordered relationship on %@", childKey, entity);
     
+    // inverse relationship is required for object to index path lookup. if we don't want this constraint
+    // anymore, we need to make that fast, too, somehow.
     NSAssert(relationship.inverseRelationship != nil,
              @"childKey %@ must have an inverse relationship on %@", childKey, relationship.destinationEntity.name);
     
     self = [super init];
     if (self) {
+        // Force the child key to be prefetched or else we fault on every single parent object
         NSFetchRequest *updatedFetchRequest = [fetchRequest copy];
         NSMutableArray *prefetchRelationships = [updatedFetchRequest.relationshipKeyPathsForPrefetching mutableCopy];
         [prefetchRelationships addObject:childKey];
         updatedFetchRequest.relationshipKeyPathsForPrefetching = prefetchRelationships;
         
         if (!updatedFetchRequest.predicate) {
+            // Things that take predicates don't appreciate having a nil predicate elsewhere, so for our internal
+            // sanity let's keep the predicate set.
             updatedFetchRequest.predicate = [NSPredicate predicateWithValue:YES];
         }
         
@@ -344,7 +352,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     
     [deletedObjects addObjectsFromArray:advertisedDeletedObjects.allObjects];
 
-    // Do the actual processing now that we've figured out what each class of changes are    
+    // Do the actual processing now that we've figured out what each class of changes are
     NSIndexSet *deletedSections = [self updateSectionsWithDeletedObjects:deletedObjects];
     NSIndexSet *insertedSections = [self updateSectionsWithInsertedObjects:insertedObjects];
     
