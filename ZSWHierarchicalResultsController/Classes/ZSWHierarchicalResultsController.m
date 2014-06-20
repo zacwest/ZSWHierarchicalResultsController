@@ -253,7 +253,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
                 continue;
             }
             
-            if (existingObject != updatedObject) {
+            if (![existingObject isEqual:updatedObject]) {
                 // We moved this object within the list.
                 // We don't support multi-section move, and implementing intra-section move is tough
                 // so let's just consider this a delete and insert
