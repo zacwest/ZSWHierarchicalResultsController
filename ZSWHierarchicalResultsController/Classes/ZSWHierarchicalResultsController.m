@@ -344,10 +344,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     
     [deletedObjects addObjectsFromArray:advertisedDeletedObjects.allObjects];
 
-    //
-    
-    NSLog(@"Inserted: %@, updated: %@, deleted: %@", insertedObjects, updatedObjects, deletedObjects);
-    
+    // Do the actual processing now that we've figured out what each class of changes are    
     NSIndexSet *deletedSections = [self updateSectionsWithDeletedObjects:deletedObjects];
     NSIndexSet *insertedSections = [self updateSectionsWithInsertedObjects:insertedObjects];
     
