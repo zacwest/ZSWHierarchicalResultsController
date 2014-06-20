@@ -385,6 +385,16 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     // todo: faster; remember this is a sorted array
     // we can either use a binary search or store a map from object to section
     
+    // BUT HUGE NOTE FROM TRYING THIS FOR LIKE A HALF HOUR:
+    // the sort keys MAY HAVE CHANGED! we could be doing a lookup as a result of the sort
+    // order changing and needing to find the section. so.. that complicates things.
+    // maybe we could do a binary search and if not found, fall back to scan?
+    
+    // second round note: this doesn't work either. we can't count on other objects
+    // maintaining the sort order even inside the sections, so comparisons may throw is onto
+    // the wrong object (because the binary search doesn't handle this case cleanly, it
+    // will return the *wrong index* if the sorts are violated)
+    
     return [self.sections bk_match:^BOOL(HLHierarchicalResultsSection *sectionInfo) {
         return sectionInfo.object == object;
     }];
