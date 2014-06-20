@@ -20,6 +20,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 @property (nonatomic, weak, readwrite) id<HLHierarchicalResultsDelegate> delegate;
 
 @property (nonatomic, strong) NSArray *sections;
+@property (nonatomic, strong) NSDictionary *objectIdToSectionMap;
 
 @property (nonatomic, strong) NSArray *sortDescriptors;
 @property (nonatomic, strong) NSArray *reverseSortDescriptors;
@@ -369,9 +370,13 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 - (void)setSections:(NSArray *)sections {
     _sections = sections;
     
+    // Update our section caches: the section index, the lookup table
+    NSMutableDictionary *objectIdToSectionMap = [NSMutableDictionary dictionaryWithCapacity:_sections.count];
     [_sections enumerateObjectsUsingBlock:^(HLHierarchicalResultsSection *sectionInfo, NSUInteger idx, BOOL *stop) {
         sectionInfo.sectionIdx = idx;
+        objectIdToSectionMap[sectionInfo.object.objectID] = sectionInfo;
     }];
+    self.objectIdToSectionMap = objectIdToSectionMap;
 }
 
 - (HLHierarchicalResultsSection *)newSectionInfoForObject:(id)object {
@@ -381,23 +386,30 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     return sectionInfo;
 }
 
-- (HLHierarchicalResultsSection *)sectionInfoForObject:(id)object {
-    // todo: faster; remember this is a sorted array
-    // we can either use a binary search or store a map from object to section
+- (HLHierarchicalResultsSection *)sectionInfoForObject:(NSManagedObject *)object {
+    if (!object) {
+        // an external consumer could force us to do a query like this somehow
+        return nil;
+    }
     
-    // BUT HUGE NOTE FROM TRYING THIS FOR LIKE A HALF HOUR:
-    // the sort keys MAY HAVE CHANGED! we could be doing a lookup as a result of the sort
-    // order changing and needing to find the section. so.. that complicates things.
-    // maybe we could do a binary search and if not found, fall back to scan?
+    // Note: although the sections array is generally sorted, if we're processing as a result of the
+    // sort order changing, we can't count on this sorting order.
+    //
+    // Therefor, we can't use a binary search to do the lookup because it returns the wrong indexes
+    // if the sorting constraint doesn't hold on the items it's doing a binary search on.
+    // Yes, even if you check for NSNotFound as the return of the binary search; it's going to return
+    // the wrong index as though it's correct.
     
-    // second round note: this doesn't work either. we can't count on other objects
-    // maintaining the sort order even inside the sections, so comparisons may throw is onto
-    // the wrong object (because the binary search doesn't handle this case cleanly, it
-    // will return the *wrong index* if the sorts are violated)
+    HLHierarchicalResultsSection *sectionInfo = self.objectIdToSectionMap[object.objectID];
+    if (!sectionInfo) {
+        // If we don't have this section mapped already, we need to do a scan to find it.
+        sectionInfo = [self.sections bk_match:^BOOL(HLHierarchicalResultsSection *sectionInfoTest) {
+            return [sectionInfoTest.object isEqual:object];
+        }];
+    }
     
-    return [self.sections bk_match:^BOOL(HLHierarchicalResultsSection *sectionInfo) {
-        return sectionInfo.object == object;
-    }];
+    NSAssert([sectionInfo.object isEqual:object], @"Sanity check: we aren't returning the right section for the queried object");
+    return sectionInfo;
 }
 
 - (HLHierarchicalResultsSection *)sectionInfoForSection:(NSInteger)section {
