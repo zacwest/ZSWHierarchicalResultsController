@@ -474,6 +474,23 @@ describe(@"HLHierarchicalResultsController", ^{
                             
                             expect([controller indexPathForObject:day3Event1]).to.equal(event1IndexPath);
                         });
+                        
+                        describe(@"when the deleted section updates again and is still deleted", ^{
+                            beforeEach(^{
+                                day2.sectionIdentifier = nil;
+                                
+                                [[delegate reject] hierarchicalController:controller
+                                             didUpdateWithDeletedSections:OCMOCK_ANY
+                                                         insertedSections:OCMOCK_ANY
+                                                             deletedItems:OCMOCK_ANY
+                                                            insertedItems:OCMOCK_ANY];
+                                [context processPendingChanges];
+                            });
+                            
+                            it(@"should not have told the delegate anything", ^{
+                                [delegate verify];
+                            });
+                        });
                     });
                 });
             });

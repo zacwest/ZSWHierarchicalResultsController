@@ -346,7 +346,10 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
                 [updatedObjects addObject:updatedObject];
             }
         } else {
-            [deletedObjects addObject:updatedObject];
+            // make sure we're watching this object, because it may not match the predicate already
+            if ([self sectionInfoForObject:updatedObject]) {
+                [deletedObjects addObject:updatedObject];
+            }
         }
     }
     
@@ -413,7 +416,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
         }];
     }
     
-    NSAssert([sectionInfo.object isEqual:object], @"Sanity check: we aren't returning the right section for the queried object");
+    NSAssert(!sectionInfo || [sectionInfo.object isEqual:object], @"Sanity check: we aren't returning the right section for the queried object");
     return sectionInfo;
 }
 
