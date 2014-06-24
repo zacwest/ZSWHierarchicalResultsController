@@ -321,6 +321,32 @@ describe(@"HLHierarchicalResultsController", ^{
                         });
                     });
                     
+                    describe(@"when inserting a section (early) and deleting an object (late) at the same time", ^{
+                        __block CDDay *day3;
+                        __block CDLocationEvent *day3Event1;
+                        
+                        beforeEach(^{
+                            day3 = [HLFixtures dayInContext:context];
+                            day3.sectionIdentifier = @"1a"; // puts us before section 2
+                            
+                            day3Event1 = [HLFixtures locationEventInContext:context];
+                            [[day3 mutableOrderedSetValueForKey:HLSelector(locationEvents)] addObject:day3Event1];
+                            
+                            [[day2 mutableOrderedSetValueForKey:HLSelector(locationEvents)] removeObjectAtIndex:0];
+                            
+                            [[delegate expect] hierarchicalController:controller
+                                         didUpdateWithDeletedSections:nil
+                                                     insertedSections:[NSIndexSet indexSetWithIndex:1]
+                                                         deletedItems:@[ [NSIndexPath indexPathForItem:0 inSection:1] ]
+                                                        insertedItems:nil];
+                            [context processPendingChanges];
+                        });
+                        
+                        it(@"should delete and insert at the same time in the right order", ^{
+                            [delegate verify];
+                        });
+                    });
+                    
                     describe(@"when inserting a section", ^{
                         __block CDDay *day3;
                         __block CDLocationEvent *day3Event1;

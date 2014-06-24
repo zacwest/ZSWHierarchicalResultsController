@@ -356,13 +356,19 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     [deletedObjects addObjectsFromArray:advertisedDeletedObjects.allObjects];
 
     // Do the actual processing now that we've figured out what each class of changes are
-    NSIndexSet *deletedSections = [self updateSectionsWithDeletedObjects:deletedObjects];
-    NSIndexSet *insertedSections = [self updateSectionsWithInsertedObjects:insertedObjects];
     
+    // Remember: we must handle deletes *before* inserts. This guy deletes sections and thus
+    // changes section indexes.
+    NSIndexSet *deletedSections = [self updateSectionsWithDeletedObjects:deletedObjects];
+    
+    // This guy does both deletes and inserts, but section numbers don't change, so it's okay to do them together.
     NSArray *insertedIndexPaths, *deletedIndexPaths;
     [self updateSectionsWithUpdatedObjects:updatedObjects
                         insertedIndexPaths:&insertedIndexPaths
                          deletedIndexPaths:&deletedIndexPaths];
+    
+    // This guy does inserts, which changes section indexes. This has to happen after all deletes.
+    NSIndexSet *insertedSections = [self updateSectionsWithInsertedObjects:insertedObjects];
     
     if (insertedSections || deletedSections || insertedIndexPaths || deletedIndexPaths) {
         [self.delegate hierarchicalController:self
