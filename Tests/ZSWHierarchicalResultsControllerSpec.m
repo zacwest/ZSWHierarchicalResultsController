@@ -501,6 +501,23 @@ describe(@"HLHierarchicalResultsController", ^{
                             expect([controller indexPathForObject:day3Event1]).to.equal(event1IndexPath);
                         });
                         
+                        describe(@"when the section returns to matching the predicate", ^{
+                            beforeEach(^{
+                                day2.sectionIdentifier = @"2";
+                                
+                                [[delegate expect] hierarchicalController:controller
+                                             didUpdateWithDeletedSections:nil
+                                                         insertedSections:[NSIndexSet indexSetWithIndex:1]
+                                                             deletedItems:nil
+                                                            insertedItems:nil];
+                                [context processPendingChanges];
+                            });
+                            
+                            it(@"should have told the delegate to insert", ^{
+                                [delegate verify];
+                            });
+                        });
+                        
                         describe(@"when the deleted section updates again and is still deleted", ^{
                             beforeEach(^{
                                 day2.sectionIdentifier = nil;

@@ -334,22 +334,24 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     NSMutableArray *deletedObjects = [NSMutableArray arrayWithCapacity:advertisedUpdatedObjects.count + advertisedDeletedObjects.count];
     
     for (NSManagedObject *updatedObject in advertisedUpdatedObjects) {
-        if ([fetchRequestPredicate evaluateWithObject:updatedObject]) {
-            // The object still matches the predicate, cool.
-            // Now we need to make sure its sort order didn't change, because if it did, we need to move it.
-            // However, we handle moving sections by deleting and inserting, so we can test if any of the keys
-            // changed the sorting.
+        BOOL objectCurrentlyExists = [self sectionInfoForObject:updatedObject] != nil;
+        BOOL objectMatchesPredicate = [fetchRequestPredicate evaluateWithObject:updatedObject];
+        
+        if (objectCurrentlyExists && objectMatchesPredicate) {
             if ([updatedObject.changedValuesForCurrentEvent.allKeys firstObjectCommonWithArray:self.sortDescriptorKeys]) {
+                // Sort order may have changed, process as a delete/insert.
                 [deletedObjects addObject:updatedObject];
                 [insertedObjects addObject:updatedObject];
             } else {
+                // Sort order didn't change, handle as a normal update.
                 [updatedObjects addObject:updatedObject];
             }
-        } else {
-            // make sure we're watching this object, because it may not match the predicate already
-            if ([self sectionInfoForObject:updatedObject]) {
-                [deletedObjects addObject:updatedObject];
-            }
+        } else if (objectCurrentlyExists && !objectMatchesPredicate) {
+            // Object no longer matches the predicate, handle as a delete.
+            [deletedObjects addObject:updatedObject];
+        } else if (!objectCurrentlyExists && objectMatchesPredicate) {
+            // Object now newly matches the predicate, handle as an insert.
+            [insertedObjects addObject:updatedObject];
         }
     }
     
