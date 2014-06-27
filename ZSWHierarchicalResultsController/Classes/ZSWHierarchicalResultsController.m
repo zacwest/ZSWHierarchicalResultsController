@@ -312,12 +312,14 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     NSSet *notificationInsertedObjects = userInfo[NSInsertedObjectsKey];
     NSSet *notificationUpdatedObjects = userInfo[NSUpdatedObjectsKey];
     NSSet *notificationDeletedObjects = userInfo[NSDeletedObjectsKey];
+    NSSet *notificationRefreshedObjects = userInfo[NSRefreshedObjectsKey];
     
     NSSet *advertisedInsertedObjects = [notificationInsertedObjects bk_select:matchesObject];
     NSSet *advertisedUpdatedObjects = [notificationUpdatedObjects bk_select:matchesObject];
     NSSet *advertisedDeletedObjects = [notificationDeletedObjects bk_select:matchesObject];
+    NSSet *advertisedRefreshedObjects = [notificationRefreshedObjects bk_select:matchesObject];
     
-    if (!advertisedInsertedObjects.count && !advertisedUpdatedObjects.count && !advertisedDeletedObjects.count) {
+    if (!advertisedInsertedObjects.count && !advertisedUpdatedObjects.count && !advertisedDeletedObjects.count && !advertisedRefreshedObjects.count) {
         // early abort if we have no work to do.
         return;
     }
@@ -333,7 +335,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     NSMutableArray *updatedObjects = [NSMutableArray arrayWithCapacity:advertisedUpdatedObjects.count];
     NSMutableArray *deletedObjects = [NSMutableArray arrayWithCapacity:advertisedUpdatedObjects.count + advertisedDeletedObjects.count];
     
-    for (NSManagedObject *updatedObject in advertisedUpdatedObjects) {
+    for (NSManagedObject *updatedObject in [[NSSet setWithSet:advertisedUpdatedObjects] setByAddingObjectsFromSet:advertisedRefreshedObjects]) {
         BOOL objectCurrentlyExists = [self sectionInfoForObject:updatedObject] != nil;
         BOOL objectMatchesPredicate = [fetchRequestPredicate evaluateWithObject:updatedObject];
         
