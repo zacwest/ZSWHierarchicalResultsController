@@ -108,7 +108,10 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
                             delegate:(id<HLHierarchicalResultsDelegate>)delegate {
     NSFetchRequest *fetchRequest = [NSFetchRequest fetchRequestWithEntityName:parentObject.entity.name];
     fetchRequest.predicate = [NSPredicate predicateWithFormat:@"self = %@", parentObject];
-    fetchRequest.sortDescriptors = @[ [NSSortDescriptor sortDescriptorWithKey:@"self" ascending:YES] ];
+    
+    NSPropertyDescription *someDescription = parentObject.entity.attributesByName.allValues.lastObject;
+    
+    fetchRequest.sortDescriptors = @[ [NSSortDescriptor sortDescriptorWithKey:someDescription.name ascending:YES] ];
     return [self initWithFetchRequest:fetchRequest childKey:childKey managedObjectContext:context delegate:delegate];
 }
 
