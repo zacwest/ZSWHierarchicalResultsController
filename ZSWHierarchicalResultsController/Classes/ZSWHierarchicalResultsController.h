@@ -75,6 +75,7 @@
                 managedObjectContext:(NSManagedObjectContext *)context
                             delegate:(id<HLHierarchicalResultsDelegate>)delegate;
 
+@property (nonatomic, strong, readonly) NSManagedObjectContext *managedObjectContext;
 @property (nonatomic, weak, readonly) id<HLHierarchicalResultsDelegate> delegate;
 
 #pragma mark - Information

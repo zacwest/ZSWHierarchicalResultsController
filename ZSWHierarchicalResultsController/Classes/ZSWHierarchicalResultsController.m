@@ -15,7 +15,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 @property (nonatomic, copy) NSFetchRequest *fetchRequest;
 @property (nonatomic, copy) NSString *childKey;
 @property (nonatomic, copy) NSString *inverseChildKey;
-@property (nonatomic, strong) NSManagedObjectContext *context;
+@property (nonatomic, strong, readwrite) NSManagedObjectContext *managedObjectContext;
 
 @property (nonatomic, weak, readwrite) id<HLHierarchicalResultsDelegate> delegate;
 
@@ -94,7 +94,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
         
         self.childKey = childKey;
         self.inverseChildKey = relationship.inverseRelationship.name;
-        self.context = context;
+        self.managedObjectContext = context;
         self.delegate = delegate;
         
         [self initializeFetch];
@@ -107,7 +107,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
                 managedObjectContext:(NSManagedObjectContext *)context
                             delegate:(id<HLHierarchicalResultsDelegate>)delegate {
     NSFetchRequest *fetchRequest = [NSFetchRequest fetchRequestWithEntityName:parentObject.entity.name];
-    fetchRequest.predicate = [NSPredicate predicateWithFormat:@"self == %@", parentObject];
+    fetchRequest.predicate = [NSPredicate predicateWithFormat:@"self = %@", parentObject];
     fetchRequest.sortDescriptors = @[ [NSSortDescriptor sortDescriptorWithKey:@"self" ascending:YES] ];
     return [self initWithFetchRequest:fetchRequest childKey:childKey managedObjectContext:context delegate:delegate];
 }
@@ -119,20 +119,20 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 
 - (void)initializeFetch {
     NSError *error;
-    NSArray *sectionObjects = [self.context executeFetchRequest:self.fetchRequest
-                                                      error:&error];
+    NSArray *sectionObjects = [self.managedObjectContext executeFetchRequest:self.fetchRequest
+                                                                       error:&error];
     if (!sectionObjects) {
         DDLogError(@"Failed to fetch objects: %@", error);
     }
     
     self.sections = [sectionObjects bk_map:^id(id obj) {
         return [self newSectionInfoForObject:obj];
-    }];
+    }]; 
 
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(objectsDidChange:)
                                                  name:NSManagedObjectContextObjectsDidChangeNotification
-                                               object:self.context];
+                                               object:self.managedObjectContext];
 }
 
 - (void)dealloc {
