@@ -35,12 +35,13 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 - (instancetype)initWithFetchRequest:(NSFetchRequest *)fetchRequest
                             childKey:(NSString *)childKey
                 managedObjectContext:(NSManagedObjectContext *)context
+               isSingleObjectRequest:(BOOL)isSingleObjectRequest
                             delegate:(id<HLHierarchicalResultsDelegate>)delegate {
     NSParameterAssert(fetchRequest != nil);
     NSParameterAssert(childKey != nil);
     NSParameterAssert(context != nil);
     
-    NSAssert(fetchRequest.sortDescriptors.count > 0,
+    NSAssert(isSingleObjectRequest || fetchRequest.sortDescriptors.count > 0,
              @"At least one sort descriptor is required for %@", fetchRequest);
     
     NSEntityDescription *entity;
@@ -83,7 +84,16 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
         
         self.fetchRequest = updatedFetchRequest;
         
-        self.sortDescriptors = updatedFetchRequest.sortDescriptors;
+        if (isSingleObjectRequest) {
+            self.sortDescriptors = @[ [NSSortDescriptor sortDescriptorWithKey:@"self"
+                                                                    ascending:YES
+                                                                   comparator:^NSComparisonResult(id obj1, id obj2) {
+                                                                       return NSOrderedSame;
+                                                                   }] ];
+        } else {
+            self.sortDescriptors = updatedFetchRequest.sortDescriptors;
+        }
+        
         self.reverseSortDescriptors = [self.sortDescriptors bk_map:^id(NSSortDescriptor *sortDescriptor) {
             return [sortDescriptor reversedSortDescriptor];
         }];
@@ -91,7 +101,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
         self.sortDescriptorKeys = [self.sortDescriptors bk_map:^id(NSSortDescriptor *sortDescriptor) {
             return sortDescriptor.key;
         }];
-        
+    
         self.childKey = childKey;
         self.inverseChildKey = relationship.inverseRelationship.name;
         self.managedObjectContext = context;
@@ -102,17 +112,29 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     return self;
 }
 
+- (instancetype)initWithFetchRequest:(NSFetchRequest *)fetchRequest
+                            childKey:(NSString *)childKey
+                managedObjectContext:(NSManagedObjectContext *)context
+                            delegate:(id<HLHierarchicalResultsDelegate>)delegate {
+    return [self initWithFetchRequest:fetchRequest
+                             childKey:childKey
+                 managedObjectContext:context
+                isSingleObjectRequest:NO
+                             delegate:delegate];
+}
+
 - (instancetype)initWithParentObject:(NSManagedObject *)parentObject
                             childKey:(NSString *)childKey
                 managedObjectContext:(NSManagedObjectContext *)context
                             delegate:(id<HLHierarchicalResultsDelegate>)delegate {
     NSFetchRequest *fetchRequest = [NSFetchRequest fetchRequestWithEntityName:parentObject.entity.name];
     fetchRequest.predicate = [NSPredicate predicateWithFormat:@"self = %@", parentObject];
-    
-    NSPropertyDescription *someDescription = parentObject.entity.attributesByName.allValues.lastObject;
-    
-    fetchRequest.sortDescriptors = @[ [NSSortDescriptor sortDescriptorWithKey:someDescription.name ascending:YES] ];
-    return [self initWithFetchRequest:fetchRequest childKey:childKey managedObjectContext:context delegate:delegate];
+
+    return [self initWithFetchRequest:fetchRequest
+                             childKey:childKey
+                 managedObjectContext:context
+                isSingleObjectRequest:YES
+                             delegate:delegate];
 }
 
 - (id)init {
