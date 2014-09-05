@@ -10,9 +10,8 @@
 
 @interface HLHierarchicalResultsSection : NSObject
 
-@property (nonatomic, assign) NSInteger sectionIdx;
-
-@property (nonatomic, retain) NSManagedObject *object;
+@property (nonatomic) NSInteger sectionIdx;
+@property (nonatomic) NSManagedObject *object;
 
 // note this copies because the proxy from core data live-updates and we don't want that
 @property (nonatomic, copy) NSArray *containedObjects;
