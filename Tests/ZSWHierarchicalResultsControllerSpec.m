@@ -21,8 +21,8 @@ describe(@"HLHierarchicalResultsController", ^{
     describe(@"for multiple objects when created for no existing objects", ^{
         beforeEach(^{
             NSFetchRequest *fetchRequest = [NSFetchRequest fetchRequestWithEntityName:HLClass(CDDay)];
-            fetchRequest.predicate = [NSPredicate predicateWithFormat:@"sectionIdentifier != nil"];
-            fetchRequest.sortDescriptors = @[ [NSSortDescriptor sortDescriptorWithKey:HLSelector(sectionIdentifier)
+            fetchRequest.predicate = [NSPredicate predicateWithFormat:@"remoteID != nil"];
+            fetchRequest.sortDescriptors = @[ [NSSortDescriptor sortDescriptorWithKey:HLSelector(remoteID)
                                                                             ascending:YES] ];
             
             context = [HLFixtures testingContext];
@@ -52,7 +52,7 @@ describe(@"HLHierarchicalResultsController", ^{
             
             beforeEach(^{
                 day1 = [HLFixtures dayInContext:context];
-                day1.sectionIdentifier = @"1";
+                day1.remoteID = @"1";
                 
                 [[delegate expect] hierarchicalController:controller
                              didUpdateWithDeletedSections:nil
@@ -199,7 +199,7 @@ describe(@"HLHierarchicalResultsController", ^{
                     
                     beforeEach(^{
                         day2 = [HLFixtures dayInContext:context];
-                        day2.sectionIdentifier = @"2";
+                        day2.remoteID = @"2";
                         
                         day2Event1 = [HLFixtures locationEventInContext:context];
                         day2Event2 = [HLFixtures locationEventInContext:context];
@@ -327,7 +327,7 @@ describe(@"HLHierarchicalResultsController", ^{
                         
                         beforeEach(^{
                             day3 = [HLFixtures dayInContext:context];
-                            day3.sectionIdentifier = @"1a"; // puts us before section 2
+                            day3.remoteID = @"1a"; // puts us before section 2
                             
                             day3Event1 = [HLFixtures locationEventInContext:context];
                             [[day3 mutableOrderedSetValueForKey:HLSelector(locationEvents)] addObject:day3Event1];
@@ -353,7 +353,7 @@ describe(@"HLHierarchicalResultsController", ^{
                         
                         beforeEach(^{
                             day3 = [HLFixtures dayInContext:context];
-                            day3.sectionIdentifier = @"3";
+                            day3.remoteID = @"3";
                             
                             day3Event1 = [HLFixtures locationEventInContext:context];
                             [[day3 mutableOrderedSetValueForKey:HLSelector(locationEvents)] addObject:day3Event1];
@@ -412,7 +412,7 @@ describe(@"HLHierarchicalResultsController", ^{
                         
                         describe(@"when the sections change their sorting key to the same value", ^{
                             beforeEach(^{
-                                day1.sectionIdentifier = @"1";
+                                day1.remoteID = @"1";
                                 
                                 [[delegate reject] hierarchicalController:controller
                                              didUpdateWithDeletedSections:OCMOCK_ANY
@@ -429,7 +429,7 @@ describe(@"HLHierarchicalResultsController", ^{
                         
                         describe(@"when the sections change their sort order", ^{
                             beforeEach(^{
-                                day1.sectionIdentifier = @"9";
+                                day1.remoteID = @"9";
                                 
                                 [[delegate expect] hierarchicalController:controller
                                              didUpdateWithDeletedSections:[NSIndexSet indexSetWithIndex:0]
@@ -450,10 +450,10 @@ describe(@"HLHierarchicalResultsController", ^{
                         __block CDLocationEvent *day3Event1;
                         
                         beforeEach(^{
-                            day2.sectionIdentifier = nil;
+                            day2.remoteID = nil;
                             
                             day3 = [HLFixtures dayInContext:context];
-                            day3.sectionIdentifier = @"3";
+                            day3.remoteID = @"3";
                             
                             day3Event1 = [HLFixtures locationEventInContext:context];
                             [[day3 mutableOrderedSetValueForKey:HLSelector(locationEvents)] addObject:day3Event1];
@@ -503,7 +503,7 @@ describe(@"HLHierarchicalResultsController", ^{
                         
                         describe(@"when the section returns to matching the predicate", ^{
                             beforeEach(^{
-                                day2.sectionIdentifier = @"2";
+                                day2.remoteID = @"2";
                                 
                                 [[delegate expect] hierarchicalController:controller
                                              didUpdateWithDeletedSections:nil
@@ -520,7 +520,7 @@ describe(@"HLHierarchicalResultsController", ^{
                         
                         describe(@"when the deleted section updates again and is still deleted", ^{
                             beforeEach(^{
-                                day2.sectionIdentifier = nil;
+                                day2.remoteID = nil;
                                 
                                 [[delegate reject] hierarchicalController:controller
                                              didUpdateWithDeletedSections:OCMOCK_ANY
