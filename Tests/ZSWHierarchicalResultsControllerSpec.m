@@ -18,6 +18,66 @@ describe(@"HLHierarchicalResultsController", ^{
     __block id delegate;
     __block NSManagedObjectContext *context;
     
+    describe(@"for multiple objects when created with existing objects", ^{
+        __block NSArray *existingDays;
+        
+        beforeEach(^{
+            NSFetchRequest *fetchRequest = [NSFetchRequest fetchRequestWithEntityName:HLClass(CDDay)];
+            fetchRequest.predicate = [NSPredicate predicateWithFormat:@"remoteID != nil"];
+            fetchRequest.sortDescriptors = @[ [NSSortDescriptor sortDescriptorWithKey:HLSelector(remoteID)
+                                                                            ascending:YES] ];
+            
+            context = [HLFixtures testingContext];
+            
+            delegate = [OCMockObject mockForProtocol:@protocol(HLHierarchicalResultsDelegate)];
+            
+            existingDays = @[ [HLFixtures dayWithEventCount:2 inContext:context],
+                              [HLFixtures dayWithEventCount:2 inContext:context],
+                              [HLFixtures dayWithEventCount:2 inContext:context] ];
+            
+            [existingDays[0] setRemoteID:@"0"];
+            [existingDays[1] setRemoteID:@"1"];
+            [existingDays[2] setRemoteID:@"2"];
+            
+            controller = [[HLHierarchicalResultsController alloc] initWithFetchRequest:fetchRequest
+                                                                              childKey:HLSelector(locationEvents)
+                                                                  managedObjectContext:context
+                                                                              delegate:delegate];
+        });
+        
+        it(@"should have sections for all 3 created days", ^{
+            expect(controller.numberOfSections).to.equal(3);
+            expect([controller parentObjectForSection:0]).to.equal(existingDays[0]);
+            expect([controller parentObjectForSection:1]).to.equal(existingDays[1]);
+            expect([controller parentObjectForSection:2]).to.equal(existingDays[2]);
+        });
+        
+        describe(@"when an objects-did-change notification includes already-inserted days (possibly because we're creating the controller before the notification is sent over, but after the objects are added to our parent context, or something)", ^{
+            beforeEach(^{
+                [[delegate reject] hierarchicalController:OCMOCK_ANY
+                             didUpdateWithDeletedSections:OCMOCK_ANY
+                                         insertedSections:OCMOCK_ANY
+                                             deletedItems:OCMOCK_ANY
+                                            insertedItems:OCMOCK_ANY];
+                
+                [[NSNotificationCenter defaultCenter] postNotificationName:NSManagedObjectContextObjectsDidChangeNotification
+                                                                    object:context
+                                                                  userInfo:@{ NSInsertedObjectsKey: [NSSet setWithArray:existingDays] }];
+            });
+            
+            it(@"should not have updated the delete", ^{
+                [delegate verify];
+            });
+            
+            it(@"should not have added any extra days", ^{
+                expect(controller.numberOfSections).to.equal(3);
+                expect([controller parentObjectForSection:0]).to.equal(existingDays[0]);
+                expect([controller parentObjectForSection:1]).to.equal(existingDays[1]);
+                expect([controller parentObjectForSection:2]).to.equal(existingDays[2]);
+            });
+        });
+    });
+    
     describe(@"for multiple objects when created for no existing objects", ^{
         beforeEach(^{
             NSFetchRequest *fetchRequest = [NSFetchRequest fetchRequestWithEntityName:HLClass(CDDay)];

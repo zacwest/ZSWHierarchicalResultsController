@@ -356,6 +356,14 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     NSPredicate *fetchRequestPredicate = self.fetchRequest.predicate;
     NSMutableArray *insertedObjects = [NSMutableArray arrayWithArray:[advertisedInsertedObjects filteredSetUsingPredicate:fetchRequestPredicate].allObjects];
     
+    // Make sure we're not doing inserts for objects we've already loaded
+    // This may happen e.g. if we get a notification just after our creation
+    [insertedObjects bk_performSelect:^BOOL(NSManagedObject *insertedObject) {
+        // we can use our association map because we haven't modified the sections array at all
+        // otherwise, it would have been invalidated by pending changes done below
+        return self.objectIdToSectionMap[insertedObject.objectID] == nil;
+    }];
+    
     // Avoiding more memory hits is better than using a bit more memory for deleted.
     NSMutableArray *updatedObjects = [NSMutableArray arrayWithCapacity:advertisedUpdatedObjects.count];
     NSMutableArray *deletedObjects = [NSMutableArray arrayWithCapacity:advertisedUpdatedObjects.count + advertisedDeletedObjects.count];
