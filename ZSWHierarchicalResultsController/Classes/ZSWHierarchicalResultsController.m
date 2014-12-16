@@ -344,7 +344,9 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     NSSet *advertisedDeletedObjects = [notificationDeletedObjects bk_select:matchesObject];
     NSSet *advertisedRefreshedObjects = [notificationRefreshedObjects bk_select:matchesObject];
     
-    if (!advertisedInsertedObjects.count && !advertisedUpdatedObjects.count && !advertisedDeletedObjects.count && !advertisedRefreshedObjects.count) {
+    NSSet *advertisedUpdatedOrRefreshedObjects = [[NSSet setWithSet:advertisedUpdatedObjects] setByAddingObjectsFromSet:advertisedRefreshedObjects];
+    
+    if (!advertisedInsertedObjects.count && !advertisedUpdatedOrRefreshedObjects.count && !advertisedDeletedObjects.count) {
         // early abort if we have no work to do.
         return;
     }
@@ -354,7 +356,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     // and if it's inserted but doesn't match, don't include it.
     
     NSPredicate *fetchRequestPredicate = self.fetchRequest.predicate;
-    NSMutableArray *insertedObjects = [NSMutableArray arrayWithArray:[advertisedInsertedObjects filteredSetUsingPredicate:fetchRequestPredicate].allObjects];
+    NSMutableSet *insertedObjects = [NSMutableSet setWithSet:[advertisedInsertedObjects filteredSetUsingPredicate:fetchRequestPredicate]];
     
     // Make sure we're not doing inserts for objects we've already loaded
     // This may happen e.g. if we get a notification just after our creation
@@ -365,10 +367,12 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     }];
     
     // Avoiding more memory hits is better than using a bit more memory for deleted.
-    NSMutableArray *updatedObjects = [NSMutableArray arrayWithCapacity:advertisedUpdatedObjects.count];
-    NSMutableArray *deletedObjects = [NSMutableArray arrayWithCapacity:advertisedUpdatedObjects.count + advertisedDeletedObjects.count];
+    NSMutableSet *updatedObjects = [NSMutableSet setWithCapacity:advertisedUpdatedOrRefreshedObjects.count];
+    NSMutableSet *deletedObjects = [NSMutableSet setWithCapacity:advertisedUpdatedOrRefreshedObjects.count + advertisedDeletedObjects.count];
     
-    for (NSManagedObject *updatedObject in [[NSSet setWithSet:advertisedUpdatedObjects] setByAddingObjectsFromSet:advertisedRefreshedObjects]) {
+    // Note we use sets for updated/inserted/deleted objects in case we somehow gain duplicates
+    
+    for (NSManagedObject *updatedObject in advertisedUpdatedOrRefreshedObjects) {
         BOOL objectCurrentlyExists = [self sectionInfoForObject:updatedObject] != nil;
         BOOL objectMatchesPredicate = [fetchRequestPredicate evaluateWithObject:updatedObject];
         
@@ -396,16 +400,16 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     
     // Remember: we must handle deletes *before* inserts. This guy deletes sections and thus
     // changes section indexes.
-    NSIndexSet *deletedSections = [self updateSectionsWithDeletedObjects:deletedObjects];
+    NSIndexSet *deletedSections = [self updateSectionsWithDeletedObjects:deletedObjects.allObjects];
     
     // This guy does both deletes and inserts, but section numbers don't change, so it's okay to do them together.
     NSArray *insertedIndexPaths, *deletedIndexPaths;
-    [self updateSectionsWithUpdatedObjects:updatedObjects
+    [self updateSectionsWithUpdatedObjects:updatedObjects.allObjects
                         insertedIndexPaths:&insertedIndexPaths
                          deletedIndexPaths:&deletedIndexPaths];
     
     // This guy does inserts, which changes section indexes. This has to happen after all deletes.
-    NSIndexSet *insertedSections = [self updateSectionsWithInsertedObjects:insertedObjects];
+    NSIndexSet *insertedSections = [self updateSectionsWithInsertedObjects:insertedObjects.allObjects];
     
     if (insertedSections || deletedSections || insertedIndexPaths || deletedIndexPaths) {
         [self.delegate hierarchicalController:self
