@@ -72,7 +72,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     if (self) {
         // Force the child key to be prefetched or else we fault on every single parent object
         NSFetchRequest *updatedFetchRequest = [fetchRequest copy];
-        NSMutableArray *prefetchRelationships = [updatedFetchRequest.relationshipKeyPathsForPrefetching mutableCopy];
+        NSMutableArray *prefetchRelationships = [NSMutableArray arrayWithArray:updatedFetchRequest.relationshipKeyPathsForPrefetching];
         [prefetchRelationships addObject:childKey];
         updatedFetchRequest.relationshipKeyPathsForPrefetching = prefetchRelationships;
         
