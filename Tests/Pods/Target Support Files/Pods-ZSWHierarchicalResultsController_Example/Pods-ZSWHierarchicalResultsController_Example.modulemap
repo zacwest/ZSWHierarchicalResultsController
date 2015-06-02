@@ -1,0 +1,6 @@
+framework module Pods_ZSWHierarchicalResultsController_Example {
+  umbrella header "Pods-ZSWHierarchicalResultsController_Example-umbrella.h"
+
+  export *
+  module * { export * }
+}
