@@ -6,29 +6,27 @@
 //  Copyright (c) 2014 Hey, Inc. All rights reserved.
 //
 
-#import "HLHierarchicalResultsController.h"
-#import "HLHierarchicalResultsSection.h"
+#import "ZSWHierarchicalResultsController.h"
+#import "ZSWHierarchicalResultsSection.h"
 
-HLDefineLogLevel(LOG_LEVEL_VERBOSE);
-
-@interface HLHierarchicalResultsController()
+@interface ZSWHierarchicalResultsController()
 @property (nonatomic, copy) NSFetchRequest *fetchRequest;
 @property (nonatomic, copy) NSString *childKey;
 @property (nonatomic, copy) NSString *inverseChildKey;
 @property (nonatomic, strong, readwrite) NSManagedObjectContext *managedObjectContext;
 
-@property (nonatomic, weak, readwrite) id<HLHierarchicalResultsDelegate> delegate;
+@property (nonatomic, weak, readwrite) id<ZSWHierarchicalResultsDelegate> delegate;
 
-@property (nonatomic, strong) NSArray *sections;
-@property (nonatomic, strong) NSDictionary *objectIdToSectionMap;
+@property (nonatomic, copy) NSArray *sections;
+@property (nonatomic, copy) NSDictionary *objectIdToSectionMap;
 
-@property (nonatomic, strong) NSArray *sortDescriptors;
-@property (nonatomic, strong) NSArray *reverseSortDescriptors;
-@property (nonatomic, strong) NSArray *sortDescriptorKeys;
+@property (nonatomic, copy) NSArray *sortDescriptors;
+@property (nonatomic, copy) NSArray *reverseSortDescriptors;
+@property (nonatomic, copy) NSArray *sortDescriptorKeys;
 
 @end
 
-@implementation HLHierarchicalResultsController
+@implementation ZSWHierarchicalResultsController
 
 #pragma mark - Lifecycle
 
@@ -36,7 +34,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
                             childKey:(NSString *)childKey
                 managedObjectContext:(NSManagedObjectContext *)context
                isSingleObjectRequest:(BOOL)isSingleObjectRequest
-                            delegate:(id<HLHierarchicalResultsDelegate>)delegate {
+                            delegate:(id<ZSWHierarchicalResultsDelegate>)delegate {
     NSParameterAssert(fetchRequest != nil);
     NSParameterAssert(childKey != nil);
     NSParameterAssert(context != nil);
@@ -94,14 +92,22 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
             self.sortDescriptors = updatedFetchRequest.sortDescriptors;
         }
         
-        self.reverseSortDescriptors = [self.sortDescriptors bk_map:^id(NSSortDescriptor *sortDescriptor) {
-            return [sortDescriptor reversedSortDescriptor];
-        }];
+        self.reverseSortDescriptors = ^{
+            NSMutableArray *reverseSortDescriptors = [NSMutableArray arrayWithCapacity:self.sortDescriptors.count];
+            for (NSSortDescriptor *sortDescriptor in self.sortDescriptors) {
+                [reverseSortDescriptors addObject:[sortDescriptor reversedSortDescriptor]];
+            }
+            return reverseSortDescriptors;
+        }();
         
-        self.sortDescriptorKeys = [self.sortDescriptors bk_map:^id(NSSortDescriptor *sortDescriptor) {
-            return sortDescriptor.key;
-        }];
-    
+        self.sortDescriptorKeys = ^{
+            NSMutableArray *sortDescriptorKeys = [NSMutableArray arrayWithCapacity:self.sortDescriptors.count];
+            for (NSSortDescriptor *sortDescriptor in self.sortDescriptors) {
+                [sortDescriptorKeys addObject:sortDescriptor.key];
+            }
+            return sortDescriptorKeys;
+        }();
+
         self.childKey = childKey;
         self.inverseChildKey = relationship.inverseRelationship.name;
         self.managedObjectContext = context;
@@ -115,7 +121,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 - (instancetype)initWithFetchRequest:(NSFetchRequest *)fetchRequest
                             childKey:(NSString *)childKey
                 managedObjectContext:(NSManagedObjectContext *)context
-                            delegate:(id<HLHierarchicalResultsDelegate>)delegate {
+                            delegate:(id<ZSWHierarchicalResultsDelegate>)delegate {
     return [self initWithFetchRequest:fetchRequest
                              childKey:childKey
                  managedObjectContext:context
@@ -126,7 +132,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 - (instancetype)initWithParentObject:(NSManagedObject *)parentObject
                             childKey:(NSString *)childKey
                 managedObjectContext:(NSManagedObjectContext *)context
-                            delegate:(id<HLHierarchicalResultsDelegate>)delegate {
+                            delegate:(id<ZSWHierarchicalResultsDelegate>)delegate {
     NSFetchRequest *fetchRequest = [NSFetchRequest fetchRequestWithEntityName:parentObject.entity.name];
     fetchRequest.predicate = [NSPredicate predicateWithFormat:@"self = %@", parentObject];
 
@@ -147,13 +153,17 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     NSArray *sectionObjects = [self.managedObjectContext executeFetchRequest:self.fetchRequest
                                                                        error:&error];
     if (!sectionObjects) {
-        DDLogError(@"Failed to fetch objects: %@", error);
+        NSLog(@"Failed to fetch objects: %@", error);
     }
     
-    self.sections = [sectionObjects bk_map:^id(id obj) {
-        return [self newSectionInfoForObject:obj];
-    }]; 
-
+    self.sections = ^{
+        NSMutableArray *sections = [NSMutableArray array];
+        for (id obj in sectionObjects) {
+            [sections addObject:[self newSectionInfoForObject:obj]];
+        }
+        return sections;
+    }();
+    
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(objectsDidChange:)
                                                  name:NSManagedObjectContextObjectsDidChangeNotification
@@ -169,8 +179,8 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 - (NSComparator)comparatorForSections {
     NSArray *sortDescriptors = self.sortDescriptors;
     
-    return ^NSComparisonResult(HLHierarchicalResultsSection *sectionInfo1,
-                               HLHierarchicalResultsSection *sectionInfo2) {
+    return ^NSComparisonResult(ZSWHierarchicalResultsSection *sectionInfo1,
+                               ZSWHierarchicalResultsSection *sectionInfo2) {
         return [sectionInfo1 compare:sectionInfo2 usingSortDescriptors:sortDescriptors];
     };
 }
@@ -193,7 +203,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     for (id insertedObject in insertedObjects) {
         // note: section indices on section objects are not valid in this method
         
-        HLHierarchicalResultsSection *sectionInfo = [self newSectionInfoForObject:insertedObject];
+        ZSWHierarchicalResultsSection *sectionInfo = [self newSectionInfoForObject:insertedObject];
         NSInteger insertIdx = [updatedSections indexOfObject:sectionInfo
                                                inSortedRange:NSMakeRange(lastInsertedIdx, updatedSections.count - lastInsertedIdx)
                                                      options:NSBinarySearchingInsertionIndex
@@ -228,7 +238,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     for (id deletedObject in deletedObjects) {
         // note: section indices on section objects are not valid in this method
         // but since we're going backwards, our indices are valid before our current delete point
-        HLHierarchicalResultsSection *sectionInfo = [self sectionInfoForObject:deletedObject];
+        ZSWHierarchicalResultsSection *sectionInfo = [self sectionInfoForObject:deletedObject];
         [deletedSet addIndex:sectionInfo.sectionIdx];
     }
     
@@ -254,7 +264,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     NSMutableArray *deletedIndexPaths = [NSMutableArray array];
     
     for (NSManagedObject *object in updatedObjects) {
-        HLHierarchicalResultsSection *sectionInfo = [self sectionInfoForObject:object];
+        ZSWHierarchicalResultsSection *sectionInfo = [self sectionInfoForObject:object];
         NSInteger sectionIdx = sectionInfo.sectionIdx;
         
         NSArray *existingItems = sectionInfo.containedObjects;
@@ -323,14 +333,19 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     }
 }
 
+- (NSSet *)objectsInSet:(NSSet *)uncheckedSet matchingEntity:(NSEntityDescription *)entity {
+    NSMutableSet *checkedSet = [NSMutableSet setWithCapacity:uncheckedSet.count];
+    for (NSManagedObject *obj in uncheckedSet) {
+        if ([obj.entity isKindOfEntity:entity]) {
+            [checkedSet addObject:obj];
+        }
+    }
+    return checkedSet;
+}
+
 - (void)objectsDidChange:(NSNotification *)notification {
     NSDictionary *userInfo = notification.userInfo;
     NSEntityDescription *entity = self.fetchRequest.entity;
-    
-    // Grab all objects which are our parent object type
-    BOOL (^matchesObject)(id) = ^(NSManagedObject *obj){
-        return [obj.entity isKindOfEntity:entity];
-    };
     
     // these are unnecessary but since I keep forgetting that they're sets and not arrays,
     // let's keep them floating around with their correct type.
@@ -339,10 +354,10 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     NSSet *notificationDeletedObjects = userInfo[NSDeletedObjectsKey];
     NSSet *notificationRefreshedObjects = userInfo[NSRefreshedObjectsKey];
     
-    NSSet *advertisedInsertedObjects = [notificationInsertedObjects bk_select:matchesObject];
-    NSSet *advertisedUpdatedObjects = [notificationUpdatedObjects bk_select:matchesObject];
-    NSSet *advertisedDeletedObjects = [notificationDeletedObjects bk_select:matchesObject];
-    NSSet *advertisedRefreshedObjects = [notificationRefreshedObjects bk_select:matchesObject];
+    NSSet *advertisedInsertedObjects = [self objectsInSet:notificationInsertedObjects matchingEntity:entity];
+    NSSet *advertisedUpdatedObjects = [self objectsInSet:notificationUpdatedObjects matchingEntity:entity];
+    NSSet *advertisedDeletedObjects = [self objectsInSet:notificationDeletedObjects matchingEntity:entity];
+    NSSet *advertisedRefreshedObjects = [self objectsInSet:notificationRefreshedObjects matchingEntity:entity];
     
     NSSet *advertisedUpdatedOrRefreshedObjects = [[NSSet setWithSet:advertisedUpdatedObjects] setByAddingObjectsFromSet:advertisedRefreshedObjects];
     
@@ -360,12 +375,16 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     
     // Make sure we're not doing inserts for objects we've already loaded
     // This may happen e.g. if we get a notification just after our creation
-    [insertedObjects bk_performSelect:^BOOL(NSManagedObject *insertedObject) {
-        // we can use our association map because we haven't modified the sections array at all
-        // otherwise, it would have been invalidated by pending changes done below
-        return self.objectIdToSectionMap[insertedObject.objectID] == nil;
-    }];
-    
+    {
+        for (NSManagedObject *insertedObject in [insertedObjects copy]) {
+            // we can use our association map because we haven't modified the sections array at all
+            // otherwise, it would have been invalidated by pending changes done below
+            if (self.objectIdToSectionMap[insertedObject.objectID] != nil) {
+                [insertedObjects removeObject:insertedObject];
+            }
+        }
+    }
+
     // Avoiding more memory hits is better than using a bit more memory for deleted.
     NSMutableSet *updatedObjects = [NSMutableSet setWithCapacity:advertisedUpdatedOrRefreshedObjects.count];
     NSMutableSet *deletedObjects = [NSMutableSet setWithCapacity:advertisedUpdatedOrRefreshedObjects.count + advertisedDeletedObjects.count];
@@ -427,21 +446,21 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     
     // Update our section caches: the section index, the lookup table
     NSMutableDictionary *objectIdToSectionMap = [NSMutableDictionary dictionaryWithCapacity:_sections.count];
-    [_sections enumerateObjectsUsingBlock:^(HLHierarchicalResultsSection *sectionInfo, NSUInteger idx, BOOL *stop) {
+    [_sections enumerateObjectsUsingBlock:^(ZSWHierarchicalResultsSection *sectionInfo, NSUInteger idx, BOOL *stop) {
         sectionInfo.sectionIdx = idx;
         objectIdToSectionMap[sectionInfo.object.objectID] = sectionInfo;
     }];
     self.objectIdToSectionMap = objectIdToSectionMap;
 }
 
-- (HLHierarchicalResultsSection *)newSectionInfoForObject:(id)object {
-    HLHierarchicalResultsSection *sectionInfo = [[HLHierarchicalResultsSection alloc] init];
+- (ZSWHierarchicalResultsSection *)newSectionInfoForObject:(id)object {
+    ZSWHierarchicalResultsSection *sectionInfo = [[ZSWHierarchicalResultsSection alloc] init];
     sectionInfo.object = object;
     sectionInfo.containedObjects = [[object valueForKey:self.childKey] array];
     return sectionInfo;
 }
 
-- (HLHierarchicalResultsSection *)sectionInfoForObject:(NSManagedObject *)object {
+- (ZSWHierarchicalResultsSection *)sectionInfoForObject:(NSManagedObject *)object {
     if (!object) {
         // an external consumer could force us to do a query like this somehow
         return nil;
@@ -455,19 +474,22 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     // Yes, even if you check for NSNotFound as the return of the binary search; it's going to return
     // the wrong index as though it's correct.
     
-    HLHierarchicalResultsSection *sectionInfo = self.objectIdToSectionMap[object.objectID];
+    ZSWHierarchicalResultsSection *sectionInfo = self.objectIdToSectionMap[object.objectID];
     if (!sectionInfo) {
         // If we don't have this section mapped already, we need to do a scan to find it.
-        sectionInfo = [self.sections bk_match:^BOOL(HLHierarchicalResultsSection *sectionInfoTest) {
-            return [sectionInfoTest.object isEqual:object];
-        }];
+        for (ZSWHierarchicalResultsSection *sectionInfoTest in self.sections) {
+            if ([sectionInfoTest.object isEqual:object]) {
+                sectionInfo = sectionInfoTest;
+                break;
+            }
+        }
     }
     
     NSAssert(!sectionInfo || [sectionInfo.object isEqual:object], @"Sanity check: we aren't returning the right section for the queried object");
     return sectionInfo;
 }
 
-- (HLHierarchicalResultsSection *)sectionInfoForSection:(NSInteger)section {
+- (ZSWHierarchicalResultsSection *)sectionInfoForSection:(NSInteger)section {
     if (section < self.sections.count) {
         return self.sections[section];
     } else {
@@ -482,9 +504,9 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 }
 
 - (NSInteger)numberOfObjectsInSection:(NSInteger)section {
-    HLHierarchicalResultsSection *sectionInfo = [self sectionInfoForSection:section];
+    ZSWHierarchicalResultsSection *sectionInfo = [self sectionInfoForSection:section];
     if (!sectionInfo) {
-        DDLogError(@"Asked for count of section %zd which is out of bounds", section);
+        NSLog(@"Asked for count of section %zd which is out of bounds", section);
         return -1;
     }
     
@@ -492,9 +514,9 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 }
 
 - (id)parentObjectForSection:(NSInteger)section {
-    HLHierarchicalResultsSection *sectionInfo = [self sectionInfoForSection:section];
+    ZSWHierarchicalResultsSection *sectionInfo = [self sectionInfoForSection:section];
     if (!sectionInfo) {
-        DDLogError(@"Asked for parent object of section %zd which is out of bounds", section);
+        NSLog(@"Asked for parent object of section %zd which is out of bounds", section);
         return nil;
     }
     
@@ -502,9 +524,9 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 }
 
 - (NSInteger)sectionForParentObject:(id)parentObject {
-    HLHierarchicalResultsSection *sectionInfo = [self sectionInfoForObject:parentObject];
+    ZSWHierarchicalResultsSection *sectionInfo = [self sectionInfoForObject:parentObject];
     if (!sectionInfo) {
-        DDLogError(@"Asked for section of parent object %@ but not found", parentObject);
+        NSLog(@"Asked for section of parent object %@ but not found", parentObject);
         return NSNotFound;
     }
     
@@ -512,9 +534,9 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 }
 
 - (id)objectAtIndexPath:(NSIndexPath *)indexPath {
-    HLHierarchicalResultsSection *sectionInfo = [self sectionInfoForSection:indexPath.section];
+    ZSWHierarchicalResultsSection *sectionInfo = [self sectionInfoForSection:indexPath.section];
     if (!sectionInfo) {
-        DDLogError(@"Asked for object in section %zd (index path %@) but out of bounds", indexPath.section, indexPath);
+        NSLog(@"Asked for object in section %zd (index path %@) but out of bounds", indexPath.section, indexPath);
         return nil;
     }
     
@@ -523,15 +545,15 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 
 - (NSIndexPath *)indexPathForObject:(id)object {
     id parentObject = [object valueForKey:self.inverseChildKey];
-    HLHierarchicalResultsSection *sectionInfo = [self sectionInfoForObject:parentObject];
+    ZSWHierarchicalResultsSection *sectionInfo = [self sectionInfoForObject:parentObject];
     if (!sectionInfo) {
-        DDLogError(@"Asked for an object %@ which had no section for parent object %@", object, parentObject);
+        NSLog(@"Asked for an object %@ which had no section for parent object %@", object, parentObject);
         return nil;
     }
     
     NSInteger itemIdx = [sectionInfo.containedObjects indexOfObject:object];
     if (itemIdx == NSNotFound) {
-        DDLogError(@"Asked for an object %@ which had a section %@ but wasn't in containedObjects %@", object, sectionInfo, sectionInfo.containedObjects);
+        NSLog(@"Asked for an object %@ which had a section %@ but wasn't in containedObjects %@", object, sectionInfo, sectionInfo.containedObjects);
         return nil;
     }
     
@@ -539,9 +561,9 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
 }
 
 - (NSArray *)allObjectsInSection:(NSInteger)section {
-    HLHierarchicalResultsSection *sectionInfo = [self sectionInfoForSection:section];
+    ZSWHierarchicalResultsSection *sectionInfo = [self sectionInfoForSection:section];
     if (!sectionInfo) {
-        DDLogError(@"Asked for section %zd which is out of bounds", section);
+        NSLog(@"Asked for section %zd which is out of bounds", section);
         return nil;
     }
     
