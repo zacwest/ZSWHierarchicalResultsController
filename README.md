@@ -33,7 +33,7 @@ req.sortDescriptors = @[ [NSSortDescriptor sortDescriptorWithKey:@"sortKey" asce
 
 controller = [[ZSWHierarchicalResultsController alloc]
                    initWithFetchRequest:req
-                               childKey:@"objects"
+                               childKey:@"events"
                    managedObjectContext:context
                                delegate:self];
 ```
