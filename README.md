@@ -5,11 +5,7 @@
 [![License](https://img.shields.io/cocoapods/l/ZSWHierarchicalResultsController.svg?style=flat)](http://cocoapods.org/pods/ZSWHierarchicalResultsController)
 [![Platform](https://img.shields.io/cocoapods/p/ZSWHierarchicalResultsController.svg?style=flat)](http://cocoapods.org/pods/ZSWHierarchicalResultsController)
 
-## Usage
 
-To run the example project, clone the repo, and run `pod install` from the Example directory first.
-
-## Requirements
 
 ## Installation
 
@@ -17,13 +13,9 @@ ZSWHierarchicalResultsController is available through [CocoaPods](http://cocoapo
 it, simply add the following line to your Podfile:
 
 ```ruby
-pod "ZSWHierarchicalResultsController"
+pod "ZSWHierarchicalResultsController", "~> 1.0"
 ```
-
-## Author
-
-Zachary West, zacwest@gmail.com
 
 ## License
 
-ZSWHierarchicalResultsController is available under the MIT license. See the LICENSE file for more info.
+ZSWHierarchicalResultsController is available under the [MIT license](https://github.com/zacwest/ZSWHierarchicalResultsController/blob/master/LICENSE). This library was created while working on [Heyday](http://hey.co) who allowed this to be open-sourced. If you are contributing via pull request, please include an appropriate test for the bug you are fixing or feature you are adding. 
