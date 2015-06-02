@@ -1,6 +1,6 @@
 # ZSWHierarchicalResultsController
 
-[![CI Status](http://img.shields.io/travis/zacwest/ZSWHierarchicalResultsController.svg?style=flat)](https://travis-ci.org/zacwest/ZSWHierarchicalResultsController)
+[![CI Status](https://img.shields.io/circleci/project/zacwest/ZSWHierarchicalResultsController.svg?style=flat)](https://travis-ci.org/zacwest/ZSWHierarchicalResultsController)
 [![Version](https://img.shields.io/cocoapods/v/ZSWHierarchicalResultsController.svg?style=flat)](http://cocoapods.org/pods/ZSWHierarchicalResultsController)
 [![License](https://img.shields.io/cocoapods/l/ZSWHierarchicalResultsController.svg?style=flat)](http://cocoapods.org/pods/ZSWHierarchicalResultsController)
 [![Platform](https://img.shields.io/cocoapods/p/ZSWHierarchicalResultsController.svg?style=flat)](http://cocoapods.org/pods/ZSWHierarchicalResultsController)
