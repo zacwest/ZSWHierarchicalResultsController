@@ -1,8 +1,0 @@
-framework module ZSWHierarchicalResultsController {
-  umbrella header "Pods-ZSWHierarchicalResultsController_Tests-ZSWHierarchicalResultsController-umbrella.h"
-
-  export *
-  module * { export * }
-
-  private header "ZSWHierarchicalResultsSection.h"
-}

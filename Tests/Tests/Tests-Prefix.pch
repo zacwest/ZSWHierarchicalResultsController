@@ -4,5 +4,6 @@
 
   @import Specta;
   @import Expecta;
+#import <OCMock/OCMock.h>
 
 #endif

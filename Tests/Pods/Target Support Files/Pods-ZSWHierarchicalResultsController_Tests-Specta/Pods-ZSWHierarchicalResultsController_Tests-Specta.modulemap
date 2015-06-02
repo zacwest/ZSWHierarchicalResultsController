@@ -1,6 +1,0 @@
-framework module Specta {
-  umbrella header "Pods-ZSWHierarchicalResultsController_Tests-Specta-umbrella.h"
-
-  export *
-  module * { export * }
-}

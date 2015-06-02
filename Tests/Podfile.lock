@@ -1,10 +1,12 @@
 PODS:
   - Expecta (1.0.0)
+  - OCMock (3.1.2)
   - Specta (1.0.1)
   - ZSWHierarchicalResultsController (1.0)
 
 DEPENDENCIES:
   - Expecta
+  - OCMock
   - Specta
   - ZSWHierarchicalResultsController (from `../`)
 
@@ -14,6 +16,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   Expecta: 32604574add2c46a36f8d2f716b6c5736eb75024
+  OCMock: a10ea9f0a6e921651f96f78b6faee95ebc813b92
   Specta: 097be314a75de103703a3bf9a529dc1a398509d7
   ZSWHierarchicalResultsController: 207a48877465d467f166aef8ca91b64c3ab6b87f
 

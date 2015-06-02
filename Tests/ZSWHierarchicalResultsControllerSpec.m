@@ -6,21 +6,18 @@
 //  Copyright (c) 2014 Hey, Inc. All rights reserved.
 //
 
-#import "HLHierarchicalResultsController.h"
+#import "ZSWHierarchicalResultsController.h"
 
-#import "CDDay.h"
-#import "CDLocationEvent.h"
+SpecBegin(ZSWHierarchicalResultsController)
 
-SpecBegin(HLHierarchicalResultsController)
-
-describe(@"HLHierarchicalResultsController", ^{
-    __block HLHierarchicalResultsController *controller;
+describe(@"ZSWHierarchicalResultsController", ^{
+    __block ZSWHierarchicalResultsController *controller;
     __block id delegate;
     __block NSManagedObjectContext *context;
-    
+
     describe(@"for multiple objects when created with existing objects", ^{
         __block NSArray *existingDays;
-        
+
         beforeEach(^{
             NSFetchRequest *fetchRequest = [NSFetchRequest fetchRequestWithEntityName:HLClass(CDDay)];
             fetchRequest.predicate = [NSPredicate predicateWithFormat:@"remoteID != nil"];
@@ -29,7 +26,7 @@ describe(@"HLHierarchicalResultsController", ^{
             
             context = [HLFixtures testingContext];
             
-            delegate = [OCMockObject mockForProtocol:@protocol(HLHierarchicalResultsDelegate)];
+            delegate = [OCMockObject mockForProtocol:@protocol(ZSWHierarchicalResultsDelegate)];
             
             existingDays = @[ [HLFixtures dayWithEventCount:2 inContext:context],
                               [HLFixtures dayWithEventCount:2 inContext:context],
@@ -39,7 +36,7 @@ describe(@"HLHierarchicalResultsController", ^{
             [existingDays[1] setRemoteID:@"1"];
             [existingDays[2] setRemoteID:@"2"];
             
-            controller = [[HLHierarchicalResultsController alloc] initWithFetchRequest:fetchRequest
+            controller = [[ZSWHierarchicalResultsController alloc] initWithFetchRequest:fetchRequest
                                                                               childKey:HLSelector(locationEvents)
                                                                   managedObjectContext:context
                                                                               delegate:delegate];
@@ -87,9 +84,9 @@ describe(@"HLHierarchicalResultsController", ^{
             
             context = [HLFixtures testingContext];
             
-            delegate = [OCMockObject mockForProtocol:@protocol(HLHierarchicalResultsDelegate)];
+            delegate = [OCMockObject mockForProtocol:@protocol(ZSWHierarchicalResultsDelegate)];
             
-            controller = [[HLHierarchicalResultsController alloc] initWithFetchRequest:fetchRequest
+            controller = [[ZSWHierarchicalResultsController alloc] initWithFetchRequest:fetchRequest
                                                                               childKey:HLSelector(locationEvents)
                                                                   managedObjectContext:context
                                                                               delegate:delegate];
@@ -608,9 +605,9 @@ describe(@"HLHierarchicalResultsController", ^{
             day = [HLFixtures dayInContext:context];
             [context processPendingChanges];
             
-            delegate = [OCMockObject mockForProtocol:@protocol(HLHierarchicalResultsDelegate)];
+            delegate = [OCMockObject mockForProtocol:@protocol(ZSWHierarchicalResultsDelegate)];
             
-            controller = [[HLHierarchicalResultsController alloc] initWithParentObject:day
+            controller = [[ZSWHierarchicalResultsController alloc] initWithParentObject:day
                                                                               childKey:HLSelector(locationEvents)
                                                                   managedObjectContext:context
                                                                               delegate:delegate];
