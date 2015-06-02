@@ -31,6 +31,10 @@
     return context;
 }
 
++ (OuterObject *)outerObjectWithContext:(NSManagedObjectContext *)context {
+    return [self outerObjectWithInnerCount:0 context:context];
+}
+
 + (OuterObject *)outerObjectWithInnerCount:(NSInteger)innerCount
                                    context:(NSManagedObjectContext *)context {
     OuterObject *object = [NSEntityDescription insertNewObjectForEntityForName:ZSWClass(OuterObject) inManagedObjectContext:context];

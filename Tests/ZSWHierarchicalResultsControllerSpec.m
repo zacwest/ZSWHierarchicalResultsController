@@ -8,6 +8,8 @@
 
 #import "ZSWHierarchicalResultsController.h"
 
+#import "ZSWFixtures.h"
+
 SpecBegin(ZSWHierarchicalResultsController)
 
 describe(@"ZSWHierarchicalResultsController", ^{
@@ -16,40 +18,40 @@ describe(@"ZSWHierarchicalResultsController", ^{
     __block NSManagedObjectContext *context;
 
     describe(@"for multiple objects when created with existing objects", ^{
-        __block NSArray *existingDays;
+        __block NSArray *existingOuters;
 
         beforeEach(^{
-            NSFetchRequest *fetchRequest = [NSFetchRequest fetchRequestWithEntityName:HLClass(CDDay)];
-            fetchRequest.predicate = [NSPredicate predicateWithFormat:@"remoteID != nil"];
-            fetchRequest.sortDescriptors = @[ [NSSortDescriptor sortDescriptorWithKey:HLSelector(remoteID)
+            NSFetchRequest *fetchRequest = [NSFetchRequest fetchRequestWithEntityName:@"OuterObject"];
+            fetchRequest.predicate = [NSPredicate predicateWithFormat:@"%K != nil", ZSWSelector(outerSortKey)];
+            fetchRequest.sortDescriptors = @[ [NSSortDescriptor sortDescriptorWithKey:ZSWSelector(outerSortKey)
                                                                             ascending:YES] ];
             
-            context = [HLFixtures testingContext];
+            context = [ZSWFixtures context];
             
             delegate = [OCMockObject mockForProtocol:@protocol(ZSWHierarchicalResultsDelegate)];
             
-            existingDays = @[ [HLFixtures dayWithEventCount:2 inContext:context],
-                              [HLFixtures dayWithEventCount:2 inContext:context],
-                              [HLFixtures dayWithEventCount:2 inContext:context] ];
+            existingOuters = @[ [ZSWFixtures outerObjectWithInnerCount:2 context:context],
+                                [ZSWFixtures outerObjectWithInnerCount:2 context:context],
+                                [ZSWFixtures outerObjectWithInnerCount:2 context:context] ];
             
-            [existingDays[0] setRemoteID:@"0"];
-            [existingDays[1] setRemoteID:@"1"];
-            [existingDays[2] setRemoteID:@"2"];
+            [existingOuters[0] setOuterSortKey:@"0"];
+            [existingOuters[1] setOuterSortKey:@"1"];
+            [existingOuters[2] setOuterSortKey:@"2"];
             
             controller = [[ZSWHierarchicalResultsController alloc] initWithFetchRequest:fetchRequest
-                                                                              childKey:HLSelector(locationEvents)
-                                                                  managedObjectContext:context
-                                                                              delegate:delegate];
+                                                                               childKey:ZSWSelector(objects)
+                                                                   managedObjectContext:context
+                                                                               delegate:delegate];
         });
         
-        it(@"should have sections for all 3 created days", ^{
+        it(@"should have sections for all 3 created outers", ^{
             expect(controller.numberOfSections).to.equal(3);
-            expect([controller parentObjectForSection:0]).to.equal(existingDays[0]);
-            expect([controller parentObjectForSection:1]).to.equal(existingDays[1]);
-            expect([controller parentObjectForSection:2]).to.equal(existingDays[2]);
+            expect([controller parentObjectForSection:0]).to.equal(existingOuters[0]);
+            expect([controller parentObjectForSection:1]).to.equal(existingOuters[1]);
+            expect([controller parentObjectForSection:2]).to.equal(existingOuters[2]);
         });
-        
-        describe(@"when an objects-did-change notification includes already-inserted days (possibly because we're creating the controller before the notification is sent over, but after the objects are added to our parent context, or something)", ^{
+
+        describe(@"when an objects-did-change notification includes already-inserted outers (possibly because we're creating the controller before the notification is sent over, but after the objects are added to our parent context, or something)", ^{
             beforeEach(^{
                 [[delegate reject] hierarchicalController:OCMOCK_ANY
                              didUpdateWithDeletedSections:OCMOCK_ANY
@@ -59,37 +61,37 @@ describe(@"ZSWHierarchicalResultsController", ^{
                 
                 [[NSNotificationCenter defaultCenter] postNotificationName:NSManagedObjectContextObjectsDidChangeNotification
                                                                     object:context
-                                                                  userInfo:@{ NSInsertedObjectsKey: [NSSet setWithArray:existingDays] }];
+                                                                  userInfo:@{ NSInsertedObjectsKey: [NSSet setWithArray:existingOuters] }];
             });
             
             it(@"should not have updated the delete", ^{
                 [delegate verify];
             });
             
-            it(@"should not have added any extra days", ^{
+            it(@"should not have added any extra outers", ^{
                 expect(controller.numberOfSections).to.equal(3);
-                expect([controller parentObjectForSection:0]).to.equal(existingDays[0]);
-                expect([controller parentObjectForSection:1]).to.equal(existingDays[1]);
-                expect([controller parentObjectForSection:2]).to.equal(existingDays[2]);
+                expect([controller parentObjectForSection:0]).to.equal(existingOuters[0]);
+                expect([controller parentObjectForSection:1]).to.equal(existingOuters[1]);
+                expect([controller parentObjectForSection:2]).to.equal(existingOuters[2]);
             });
         });
     });
-    
+
     describe(@"for multiple objects when created for no existing objects", ^{
         beforeEach(^{
-            NSFetchRequest *fetchRequest = [NSFetchRequest fetchRequestWithEntityName:HLClass(CDDay)];
-            fetchRequest.predicate = [NSPredicate predicateWithFormat:@"remoteID != nil"];
-            fetchRequest.sortDescriptors = @[ [NSSortDescriptor sortDescriptorWithKey:HLSelector(remoteID)
+            NSFetchRequest *fetchRequest = [NSFetchRequest fetchRequestWithEntityName:ZSWClass(OuterObject)];
+            fetchRequest.predicate = [NSPredicate predicateWithFormat:@"%K != nil", ZSWSelector(outerSortKey)];
+            fetchRequest.sortDescriptors = @[ [NSSortDescriptor sortDescriptorWithKey:ZSWSelector(outerSortKey)
                                                                             ascending:YES] ];
             
-            context = [HLFixtures testingContext];
+            context = [ZSWFixtures context];
             
             delegate = [OCMockObject mockForProtocol:@protocol(ZSWHierarchicalResultsDelegate)];
             
             controller = [[ZSWHierarchicalResultsController alloc] initWithFetchRequest:fetchRequest
-                                                                              childKey:HLSelector(locationEvents)
-                                                                  managedObjectContext:context
-                                                                              delegate:delegate];
+                                                                               childKey:ZSWSelector(objects)
+                                                                   managedObjectContext:context
+                                                                               delegate:delegate];
         });
         
         it(@"should find no existing sections", ^{
@@ -105,11 +107,11 @@ describe(@"ZSWHierarchicalResultsController", ^{
         });
         
         describe(@"when adding a section with no objects", ^{
-            __block CDDay *day1;
+            __block OuterObject *outer1;
             
             beforeEach(^{
-                day1 = [HLFixtures dayInContext:context];
-                day1.remoteID = @"1";
+                outer1 = [ZSWFixtures outerObjectWithContext:context];
+                outer1.outerSortKey = @"1";
                 
                 [[delegate expect] hierarchicalController:controller
                              didUpdateWithDeletedSections:nil
@@ -129,15 +131,15 @@ describe(@"ZSWHierarchicalResultsController", ^{
             });
             
             it(@"should translate from object to section", ^{
-                expect([controller sectionForParentObject:day1]).to.equal(0);
+                expect([controller sectionForParentObject:outer1]).to.equal(0);
             });
             
             describe(@"when adding an an object to the section", ^{
-                __block CDLocationEvent *day1Event1;
+                __block InnerObject *outer1Inner1;
                 
                 beforeEach(^{
-                    day1Event1 = [HLFixtures locationEventInContext:context];
-                    [[day1 mutableOrderedSetValueForKey:HLSelector(locationEvents)] addObject:day1Event1];
+                    outer1Inner1 = [ZSWFixtures innerObjectWithContext:context];
+                    [[outer1 mutableOrderedSetValueForKey:ZSWSelector(objects)] addObject:outer1Inner1];
                     
                     [[delegate expect] hierarchicalController:controller
                                  didUpdateWithDeletedSections:nil
@@ -157,20 +159,20 @@ describe(@"ZSWHierarchicalResultsController", ^{
                 
                 it(@"should return the right object and backwards", ^{
                     NSIndexPath *indexPath = [NSIndexPath indexPathForItem:0 inSection:0];
-                    expect([controller objectAtIndexPath:indexPath]).to.equal(day1Event1);
-                    expect([controller indexPathForObject:day1Event1]).to.equal(indexPath);
+                    expect([controller objectAtIndexPath:indexPath]).to.equal(outer1Inner1);
+                    expect([controller indexPathForObject:outer1Inner1]).to.equal(indexPath);
                 });
                 
-                describe(@"when adding 2 more events, in different locations", ^{
-                    __block CDLocationEvent *day1Event2, *day1Event3;
+                describe(@"when adding 2 more inners, in different locations", ^{
+                    __block InnerObject *outer1Inner2, *outer1Inner3;
                     
                     beforeEach(^{
-                        day1Event2 = [HLFixtures locationEventInContext:context];
-                        day1Event3 = [HLFixtures locationEventInContext:context];
+                        outer1Inner2 = [ZSWFixtures innerObjectWithContext:context];
+                        outer1Inner3 = [ZSWFixtures innerObjectWithContext:context];
                         
-                        NSMutableOrderedSet *orderedSet = [day1 mutableOrderedSetValueForKey:HLSelector(locationEvents)];
-                        [orderedSet insertObject:day1Event2 atIndex:0];
-                        [orderedSet addObject:day1Event3];
+                        NSMutableOrderedSet *orderedSet = [outer1 mutableOrderedSetValueForKey:ZSWSelector(objects)];
+                        [orderedSet insertObject:outer1Inner2 atIndex:0];
+                        [orderedSet addObject:outer1Inner3];
                         
                         [[delegate expect] hierarchicalController:controller
                                      didUpdateWithDeletedSections:nil
@@ -190,29 +192,29 @@ describe(@"ZSWHierarchicalResultsController", ^{
                     });
                     
                     it(@"should return the right objects and backwards", ^{
-                        NSIndexPath *event1IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
-                        NSIndexPath *event2IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
-                        NSIndexPath *event3IndexPath = [NSIndexPath indexPathForItem:2 inSection:0];
+                        NSIndexPath *inner1IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
+                        NSIndexPath *inner2IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
+                        NSIndexPath *inner3IndexPath = [NSIndexPath indexPathForItem:2 inSection:0];
                         
-                        expect([controller objectAtIndexPath:event1IndexPath]).to.equal(day1Event1);
-                        expect([controller objectAtIndexPath:event2IndexPath]).to.equal(day1Event2);
-                        expect([controller objectAtIndexPath:event3IndexPath]).to.equal(day1Event3);
+                        expect([controller objectAtIndexPath:inner1IndexPath]).to.equal(outer1Inner1);
+                        expect([controller objectAtIndexPath:inner2IndexPath]).to.equal(outer1Inner2);
+                        expect([controller objectAtIndexPath:inner3IndexPath]).to.equal(outer1Inner3);
                         
-                        expect([controller indexPathForObject:day1Event1]).to.equal(event1IndexPath);
-                        expect([controller indexPathForObject:day1Event2]).to.equal(event2IndexPath);
-                        expect([controller indexPathForObject:day1Event3]).to.equal(event3IndexPath);
+                        expect([controller indexPathForObject:outer1Inner1]).to.equal(inner1IndexPath);
+                        expect([controller indexPathForObject:outer1Inner2]).to.equal(inner2IndexPath);
+                        expect([controller indexPathForObject:outer1Inner3]).to.equal(inner3IndexPath);
                     });
                     
-                    describe(@"when 2 of the events get deleted and one is inserted", ^{
-                        __block CDLocationEvent *day1Event4;
+                    describe(@"when 2 of the inners get deleted and one is inserted", ^{
+                        __block InnerObject *outer1Inner4;
                         
                         beforeEach(^{
-                            day1Event4 = [HLFixtures locationEventInContext:context];
+                            outer1Inner4 = [ZSWFixtures innerObjectWithContext:context];
                             
-                            NSMutableOrderedSet *orderedSet = [day1 mutableOrderedSetValueForKey:HLSelector(locationEvents)];
-                            [orderedSet removeObject:day1Event2];
-                            [orderedSet removeObject:day1Event3];
-                            [orderedSet addObject:day1Event4];
+                            NSMutableOrderedSet *orderedSet = [outer1 mutableOrderedSetValueForKey:ZSWSelector(objects)];
+                            [orderedSet removeObject:outer1Inner2];
+                            [orderedSet removeObject:outer1Inner3];
+                            [orderedSet addObject:outer1Inner4];
                             
                             [[delegate expect] hierarchicalController:controller
                                          didUpdateWithDeletedSections:nil
@@ -232,43 +234,43 @@ describe(@"ZSWHierarchicalResultsController", ^{
                         });
                         
                         it(@"should return the right objects and backwards", ^{
-                            NSIndexPath *event1IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
-                            NSIndexPath *event4IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
+                            NSIndexPath *inner1IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
+                            NSIndexPath *inner4IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
                             
-                            expect([controller objectAtIndexPath:event1IndexPath]).to.equal(day1Event1);
-                            expect([controller objectAtIndexPath:event4IndexPath]).to.equal(day1Event4);
+                            expect([controller objectAtIndexPath:inner1IndexPath]).to.equal(outer1Inner1);
+                            expect([controller objectAtIndexPath:inner4IndexPath]).to.equal(outer1Inner4);
                             
-                            expect([controller indexPathForObject:day1Event1]).to.equal(event1IndexPath);
-                            expect([controller indexPathForObject:day1Event4]).to.equal(event4IndexPath);
+                            expect([controller indexPathForObject:outer1Inner1]).to.equal(inner1IndexPath);
+                            expect([controller indexPathForObject:outer1Inner4]).to.equal(inner4IndexPath);
                         });
                         
                         it(@"should not have index paths for the deleted objects", ^{
-                            expect([controller indexPathForObject:day1Event2]).to.beNil();
-                            expect([controller indexPathForObject:day1Event3]).to.beNil();
+                            expect([controller indexPathForObject:outer1Inner2]).to.beNil();
+                            expect([controller indexPathForObject:outer1Inner3]).to.beNil();
                         });
                     });
                 });
                 
                 describe(@"when inserting objects and sections at the same time", ^{
-                    __block CDDay *day2;
-                    __block CDLocationEvent *day2Event1, *day2Event2;
-                    __block CDLocationEvent *day1Event2, *day1Event3;
+                    __block OuterObject *outer2;
+                    __block InnerObject *outer2Inner1, *outer2Inner2;
+                    __block InnerObject *outer1Inner2, *outer1Inner3;
                     
                     beforeEach(^{
-                        day2 = [HLFixtures dayInContext:context];
-                        day2.remoteID = @"2";
+                        outer2 = [ZSWFixtures outerObjectWithContext:context];
+                        outer2.outerSortKey = @"2";
                         
-                        day2Event1 = [HLFixtures locationEventInContext:context];
-                        day2Event2 = [HLFixtures locationEventInContext:context];
+                        outer2Inner1 = [ZSWFixtures innerObjectWithContext:context];
+                        outer2Inner2 = [ZSWFixtures innerObjectWithContext:context];
                         
-                        day1Event2 = [HLFixtures locationEventInContext:context];
-                        day1Event3 = [HLFixtures locationEventInContext:context];
+                        outer1Inner2 = [ZSWFixtures innerObjectWithContext:context];
+                        outer1Inner3 = [ZSWFixtures innerObjectWithContext:context];
                         
-                        NSMutableOrderedSet *day1OrderedSet = [day1 mutableOrderedSetValueForKey:HLSelector(locationEvents)];
-                        NSMutableOrderedSet *day2OrderedSet = [day2 mutableOrderedSetValueForKey:HLSelector(locationEvents)];
+                        NSMutableOrderedSet *outer1OrderedSet = [outer1 mutableOrderedSetValueForKey:ZSWSelector(objects)];
+                        NSMutableOrderedSet *outer2OrderedSet = [outer2 mutableOrderedSetValueForKey:ZSWSelector(objects)];
                         
-                        [day1OrderedSet addObjectsFromArray:@[ day1Event2, day1Event3 ]];
-                        [day2OrderedSet addObjectsFromArray:@[ day2Event1, day2Event2 ]];
+                        [outer1OrderedSet addObjectsFromArray:@[ outer1Inner2, outer1Inner3 ]];
+                        [outer2OrderedSet addObjectsFromArray:@[ outer2Inner1, outer2Inner2 ]];
                         
                         [[delegate expect] hierarchicalController:controller
                                      didUpdateWithDeletedSections:nil
@@ -293,39 +295,39 @@ describe(@"ZSWHierarchicalResultsController", ^{
                     });
                     
                     it(@"should return the right objects and backwards in section 0", ^{
-                        NSIndexPath *event1IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
-                        NSIndexPath *event2IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
-                        NSIndexPath *event3IndexPath = [NSIndexPath indexPathForItem:2 inSection:0];
+                        NSIndexPath *inner1IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
+                        NSIndexPath *inner2IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
+                        NSIndexPath *inner3IndexPath = [NSIndexPath indexPathForItem:2 inSection:0];
                         
-                        expect([controller objectAtIndexPath:event1IndexPath]).to.equal(day1Event1);
-                        expect([controller objectAtIndexPath:event2IndexPath]).to.equal(day1Event2);
-                        expect([controller objectAtIndexPath:event3IndexPath]).to.equal(day1Event3);
+                        expect([controller objectAtIndexPath:inner1IndexPath]).to.equal(outer1Inner1);
+                        expect([controller objectAtIndexPath:inner2IndexPath]).to.equal(outer1Inner2);
+                        expect([controller objectAtIndexPath:inner3IndexPath]).to.equal(outer1Inner3);
                         
-                        expect([controller indexPathForObject:day1Event1]).to.equal(event1IndexPath);
-                        expect([controller indexPathForObject:day1Event2]).to.equal(event2IndexPath);
-                        expect([controller indexPathForObject:day1Event3]).to.equal(event3IndexPath);
+                        expect([controller indexPathForObject:outer1Inner1]).to.equal(inner1IndexPath);
+                        expect([controller indexPathForObject:outer1Inner2]).to.equal(inner2IndexPath);
+                        expect([controller indexPathForObject:outer1Inner3]).to.equal(inner3IndexPath);
                     });
                     
                     it(@"should return the right objects and backwards in section 1", ^{
-                        NSIndexPath *event1IndexPath = [NSIndexPath indexPathForItem:0 inSection:1];
-                        NSIndexPath *event2IndexPath = [NSIndexPath indexPathForItem:1 inSection:1];
+                        NSIndexPath *inner1IndexPath = [NSIndexPath indexPathForItem:0 inSection:1];
+                        NSIndexPath *inner2IndexPath = [NSIndexPath indexPathForItem:1 inSection:1];
                         
-                        expect([controller objectAtIndexPath:event1IndexPath]).to.equal(day2Event1);
-                        expect([controller objectAtIndexPath:event2IndexPath]).to.equal(day2Event2);
+                        expect([controller objectAtIndexPath:inner1IndexPath]).to.equal(outer2Inner1);
+                        expect([controller objectAtIndexPath:inner2IndexPath]).to.equal(outer2Inner2);
                         
-                        expect([controller indexPathForObject:day2Event1]).to.equal(event1IndexPath);
-                        expect([controller indexPathForObject:day2Event2]).to.equal(event2IndexPath);
+                        expect([controller indexPathForObject:outer2Inner1]).to.equal(inner1IndexPath);
+                        expect([controller indexPathForObject:outer2Inner2]).to.equal(inner2IndexPath);
                     });
                     
-                    describe(@"when events are deleted in multiple sections", ^{
+                    describe(@"when inners are deleted in multiple sections", ^{
                         beforeEach(^{
-                            NSMutableOrderedSet *day1OrderedSet = [day1 mutableOrderedSetValueForKey:HLSelector(locationEvents)];
-                            NSMutableOrderedSet *day2OrderedSet = [day2 mutableOrderedSetValueForKey:HLSelector(locationEvents)];
+                            NSMutableOrderedSet *outer1OrderedSet = [outer1 mutableOrderedSetValueForKey:ZSWSelector(objects)];
+                            NSMutableOrderedSet *outer2OrderedSet = [outer2 mutableOrderedSetValueForKey:ZSWSelector(objects)];
                             
-                            [day1OrderedSet removeObject:day1Event2];
-                            [day1OrderedSet removeObject:day1Event3];
+                            [outer1OrderedSet removeObject:outer1Inner2];
+                            [outer1OrderedSet removeObject:outer1Inner3];
                             
-                            [day2OrderedSet removeObject:day2Event1];
+                            [outer2OrderedSet removeObject:outer2Inner1];
                             
                             OCMArg *deletedTest = [OCMArg checkWithBlock:^BOOL(NSArray *incomingArray) {
                                 // we need to test that the order *within* sections is valid
@@ -362,34 +364,34 @@ describe(@"ZSWHierarchicalResultsController", ^{
                         });
                         
                         it(@"should return the right objects and backwards in section 0", ^{
-                            NSIndexPath *event1IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
+                            NSIndexPath *inner1IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
                             
-                            expect([controller objectAtIndexPath:event1IndexPath]).to.equal(day1Event1);
+                            expect([controller objectAtIndexPath:inner1IndexPath]).to.equal(outer1Inner1);
                             
-                            expect([controller indexPathForObject:day1Event1]).to.equal(event1IndexPath);
+                            expect([controller indexPathForObject:outer1Inner1]).to.equal(inner1IndexPath);
                         });
                         
                         it(@"should return the right objects and backwards in section 1", ^{
-                            NSIndexPath *event2IndexPath = [NSIndexPath indexPathForItem:0 inSection:1];
+                            NSIndexPath *inner2IndexPath = [NSIndexPath indexPathForItem:0 inSection:1];
                             
-                            expect([controller objectAtIndexPath:event2IndexPath]).to.equal(day2Event2);
+                            expect([controller objectAtIndexPath:inner2IndexPath]).to.equal(outer2Inner2);
                             
-                            expect([controller indexPathForObject:day2Event2]).to.equal(event2IndexPath);
+                            expect([controller indexPathForObject:outer2Inner2]).to.equal(inner2IndexPath);
                         });
                     });
                     
                     describe(@"when inserting a section (early) and deleting an object (late) at the same time", ^{
-                        __block CDDay *day3;
-                        __block CDLocationEvent *day3Event1;
+                        __block OuterObject *outer3;
+                        __block InnerObject *outer3Inner1;
                         
                         beforeEach(^{
-                            day3 = [HLFixtures dayInContext:context];
-                            day3.remoteID = @"1a"; // puts us before section 2
+                            outer3 = [ZSWFixtures outerObjectWithContext:context];
+                            outer3.outerSortKey = @"1a"; // puts us before section 2
                             
-                            day3Event1 = [HLFixtures locationEventInContext:context];
-                            [[day3 mutableOrderedSetValueForKey:HLSelector(locationEvents)] addObject:day3Event1];
+                            outer3Inner1 = [ZSWFixtures innerObjectWithContext:context];
+                            [[outer3 mutableOrderedSetValueForKey:ZSWSelector(objects)] addObject:outer3Inner1];
                             
-                            [[day2 mutableOrderedSetValueForKey:HLSelector(locationEvents)] removeObjectAtIndex:0];
+                            [[outer2 mutableOrderedSetValueForKey:ZSWSelector(objects)] removeObjectAtIndex:0];
                             
                             [[delegate expect] hierarchicalController:controller
                                          didUpdateWithDeletedSections:nil
@@ -405,15 +407,15 @@ describe(@"ZSWHierarchicalResultsController", ^{
                     });
                     
                     describe(@"when inserting a section", ^{
-                        __block CDDay *day3;
-                        __block CDLocationEvent *day3Event1;
+                        __block OuterObject *outer3;
+                        __block InnerObject *outer3Inner1;
                         
                         beforeEach(^{
-                            day3 = [HLFixtures dayInContext:context];
-                            day3.remoteID = @"3";
+                            outer3 = [ZSWFixtures outerObjectWithContext:context];
+                            outer3.outerSortKey = @"3";
                             
-                            day3Event1 = [HLFixtures locationEventInContext:context];
-                            [[day3 mutableOrderedSetValueForKey:HLSelector(locationEvents)] addObject:day3Event1];
+                            outer3Inner1 = [ZSWFixtures innerObjectWithContext:context];
+                            [[outer3 mutableOrderedSetValueForKey:ZSWSelector(objects)] addObject:outer3Inner1];
 
                             [[delegate expect] hierarchicalController:controller
                                          didUpdateWithDeletedSections:nil
@@ -437,10 +439,10 @@ describe(@"ZSWHierarchicalResultsController", ^{
                             expect([controller numberOfObjectsInSection:2]).to.equal(1);
                         });
                         
-                        describe(@"when deleting 2 days in core data", ^{
+                        describe(@"when deleting 2 outers in core data", ^{
                             beforeEach(^{
-                                [context deleteObject:day1];
-                                [context deleteObject:day3];
+                                [context deleteObject:outer1];
+                                [context deleteObject:outer3];
                                 
                                 NSMutableIndexSet *deleteIndexSet = [NSMutableIndexSet indexSet];
                                 [deleteIndexSet addIndex:0];
@@ -469,7 +471,7 @@ describe(@"ZSWHierarchicalResultsController", ^{
                         
                         describe(@"when the sections change their sorting key to the same value", ^{
                             beforeEach(^{
-                                day1.remoteID = @"1";
+                                outer1.outerSortKey = @"1";
                                 
                                 [[delegate reject] hierarchicalController:controller
                                              didUpdateWithDeletedSections:OCMOCK_ANY
@@ -486,7 +488,7 @@ describe(@"ZSWHierarchicalResultsController", ^{
                         
                         describe(@"when the sections change their sort order", ^{
                             beforeEach(^{
-                                day1.remoteID = @"9";
+                                outer1.outerSortKey = @"9";
                                 
                                 [[delegate expect] hierarchicalController:controller
                                              didUpdateWithDeletedSections:[NSIndexSet indexSetWithIndex:0]
@@ -502,18 +504,18 @@ describe(@"ZSWHierarchicalResultsController", ^{
                         });
                     });
                     
-                    describe(@"when the first section no longer matches the predicate and a new day is inserted", ^{
-                        __block CDDay *day3;
-                        __block CDLocationEvent *day3Event1;
+                    describe(@"when the first section no longer matches the predicate and a new outer is inserted", ^{
+                        __block OuterObject *outer3;
+                        __block InnerObject *outer3Inner1;
                         
                         beforeEach(^{
-                            day2.remoteID = nil;
+                            outer2.outerSortKey = nil;
                             
-                            day3 = [HLFixtures dayInContext:context];
-                            day3.remoteID = @"3";
+                            outer3 = [ZSWFixtures outerObjectWithContext:context];
+                            outer3.outerSortKey = @"3";
                             
-                            day3Event1 = [HLFixtures locationEventInContext:context];
-                            [[day3 mutableOrderedSetValueForKey:HLSelector(locationEvents)] addObject:day3Event1];
+                            outer3Inner1 = [ZSWFixtures innerObjectWithContext:context];
+                            [[outer3 mutableOrderedSetValueForKey:ZSWSelector(objects)] addObject:outer3Inner1];
                             
                             [[delegate expect] hierarchicalController:controller
                                          didUpdateWithDeletedSections:[NSIndexSet indexSetWithIndex:1]
@@ -537,30 +539,30 @@ describe(@"ZSWHierarchicalResultsController", ^{
                         });
                         
                         it(@"should return the right objects and backwards in section 0", ^{
-                            NSIndexPath *event1IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
-                            NSIndexPath *event2IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
-                            NSIndexPath *event3IndexPath = [NSIndexPath indexPathForItem:2 inSection:0];
+                            NSIndexPath *inner1IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
+                            NSIndexPath *inner2IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
+                            NSIndexPath *inner3IndexPath = [NSIndexPath indexPathForItem:2 inSection:0];
                             
-                            expect([controller objectAtIndexPath:event1IndexPath]).to.equal(day1Event1);
-                            expect([controller objectAtIndexPath:event2IndexPath]).to.equal(day1Event2);
-                            expect([controller objectAtIndexPath:event3IndexPath]).to.equal(day1Event3);
+                            expect([controller objectAtIndexPath:inner1IndexPath]).to.equal(outer1Inner1);
+                            expect([controller objectAtIndexPath:inner2IndexPath]).to.equal(outer1Inner2);
+                            expect([controller objectAtIndexPath:inner3IndexPath]).to.equal(outer1Inner3);
                             
-                            expect([controller indexPathForObject:day1Event1]).to.equal(event1IndexPath);
-                            expect([controller indexPathForObject:day1Event2]).to.equal(event2IndexPath);
-                            expect([controller indexPathForObject:day1Event3]).to.equal(event3IndexPath);
+                            expect([controller indexPathForObject:outer1Inner1]).to.equal(inner1IndexPath);
+                            expect([controller indexPathForObject:outer1Inner2]).to.equal(inner2IndexPath);
+                            expect([controller indexPathForObject:outer1Inner3]).to.equal(inner3IndexPath);
                         });
                         
                         it(@"should return the right objects and backwards in section 1", ^{
-                            NSIndexPath *event1IndexPath = [NSIndexPath indexPathForItem:0 inSection:1];
+                            NSIndexPath *inner1IndexPath = [NSIndexPath indexPathForItem:0 inSection:1];
                             
-                            expect([controller objectAtIndexPath:event1IndexPath]).to.equal(day3Event1);
+                            expect([controller objectAtIndexPath:inner1IndexPath]).to.equal(outer3Inner1);
                             
-                            expect([controller indexPathForObject:day3Event1]).to.equal(event1IndexPath);
+                            expect([controller indexPathForObject:outer3Inner1]).to.equal(inner1IndexPath);
                         });
                         
                         describe(@"when the section returns to matching the predicate", ^{
                             beforeEach(^{
-                                day2.remoteID = @"2";
+                                outer2.outerSortKey = @"2";
                                 
                                 [[delegate expect] hierarchicalController:controller
                                              didUpdateWithDeletedSections:nil
@@ -577,7 +579,7 @@ describe(@"ZSWHierarchicalResultsController", ^{
                         
                         describe(@"when the deleted section updates again and is still deleted", ^{
                             beforeEach(^{
-                                day2.remoteID = nil;
+                                outer2.outerSortKey = nil;
                                 
                                 [[delegate reject] hierarchicalController:controller
                                              didUpdateWithDeletedSections:OCMOCK_ANY
@@ -598,35 +600,35 @@ describe(@"ZSWHierarchicalResultsController", ^{
     });
     
     describe(@"for a single object", ^{
-        __block CDDay *day;
+        __block OuterObject *outer;
         
         beforeEach(^{
-            context = [HLFixtures testingContext];
-            day = [HLFixtures dayInContext:context];
+            context = [ZSWFixtures context];
+            outer = [ZSWFixtures outerObjectWithContext:context];
             [context processPendingChanges];
             
             delegate = [OCMockObject mockForProtocol:@protocol(ZSWHierarchicalResultsDelegate)];
             
-            controller = [[ZSWHierarchicalResultsController alloc] initWithParentObject:day
-                                                                              childKey:HLSelector(locationEvents)
+            controller = [[ZSWHierarchicalResultsController alloc] initWithParentObject:outer
+                                                                              childKey:ZSWSelector(objects)
                                                                   managedObjectContext:context
                                                                               delegate:delegate];
         });
         
-        it(@"should start with no items in the day", ^{
+        it(@"should start with no items in the outer", ^{
             expect(controller.numberOfSections).to.equal(1);
             expect([controller numberOfObjectsInSection:0]).to.equal(0);
         });
         
-        describe(@"when a couple events are inserted", ^{
-            __block CDLocationEvent *event1, *event2;
+        describe(@"when a couple inners are inserted", ^{
+            __block InnerObject *inner1, *inner2;
             
             beforeEach(^{
-                event1 = [HLFixtures locationEventInContext:context];
-                event2 = [HLFixtures locationEventInContext:context];
+                inner1 = [ZSWFixtures innerObjectWithContext:context];
+                inner2 = [ZSWFixtures innerObjectWithContext:context];
                 
-                NSMutableOrderedSet *orderedSet = [day mutableOrderedSetValueForKey:HLSelector(locationEvents)];
-                [orderedSet addObjectsFromArray:@[ event1, event2 ]];
+                NSMutableOrderedSet *orderedSet = [outer mutableOrderedSetValueForKey:ZSWSelector(objects)];
+                [orderedSet addObjectsFromArray:@[ inner1, inner2 ]];
                 
                 [[delegate expect] hierarchicalController:controller
                              didUpdateWithDeletedSections:nil
@@ -646,26 +648,26 @@ describe(@"ZSWHierarchicalResultsController", ^{
             });
             
             it(@"should return the right objects and backwards", ^{
-                NSIndexPath *event1IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
-                NSIndexPath *event2IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
+                NSIndexPath *inner1IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
+                NSIndexPath *inner2IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
                 
-                expect([controller objectAtIndexPath:event1IndexPath]).to.equal(event1);
-                expect([controller objectAtIndexPath:event2IndexPath]).to.equal(event2);
+                expect([controller objectAtIndexPath:inner1IndexPath]).to.equal(inner1);
+                expect([controller objectAtIndexPath:inner2IndexPath]).to.equal(inner2);
                 
-                expect([controller indexPathForObject:event1]).to.equal(event1IndexPath);
-                expect([controller indexPathForObject:event2]).to.equal(event2IndexPath);
+                expect([controller indexPathForObject:inner1]).to.equal(inner1IndexPath);
+                expect([controller indexPathForObject:inner2]).to.equal(inner2IndexPath);
             });
             
-            describe(@"when adding a few more events", ^{
-                __block CDLocationEvent *event3, *event4, *event5;
+            describe(@"when adding a few more inners", ^{
+                __block InnerObject *inner3, *inner4, *inner5;
                 
                 beforeEach(^{
-                    event3 = [HLFixtures locationEventInContext:context];
-                    event4 = [HLFixtures locationEventInContext:context];
-                    event5 = [HLFixtures locationEventInContext:context];
+                    inner3 = [ZSWFixtures innerObjectWithContext:context];
+                    inner4 = [ZSWFixtures innerObjectWithContext:context];
+                    inner5 = [ZSWFixtures innerObjectWithContext:context];
                     
-                    NSMutableOrderedSet *orderedSet = [day mutableOrderedSetValueForKey:HLSelector(locationEvents)];
-                    [orderedSet addObjectsFromArray:@[ event3, event4, event5 ]];
+                    NSMutableOrderedSet *orderedSet = [outer mutableOrderedSetValueForKey:ZSWSelector(objects)];
+                    [orderedSet addObjectsFromArray:@[ inner3, inner4, inner5 ]];
                     
                     [[delegate expect] hierarchicalController:controller
                                  didUpdateWithDeletedSections:nil
@@ -687,28 +689,28 @@ describe(@"ZSWHierarchicalResultsController", ^{
                 });
                 
                 it(@"should return the right objects and backwards", ^{
-                    NSIndexPath *event1IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
-                    NSIndexPath *event2IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
-                    NSIndexPath *event3IndexPath = [NSIndexPath indexPathForItem:2 inSection:0];
-                    NSIndexPath *event4IndexPath = [NSIndexPath indexPathForItem:3 inSection:0];
-                    NSIndexPath *event5IndexPath = [NSIndexPath indexPathForItem:4 inSection:0];
+                    NSIndexPath *inner1IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
+                    NSIndexPath *inner2IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
+                    NSIndexPath *inner3IndexPath = [NSIndexPath indexPathForItem:2 inSection:0];
+                    NSIndexPath *inner4IndexPath = [NSIndexPath indexPathForItem:3 inSection:0];
+                    NSIndexPath *inner5IndexPath = [NSIndexPath indexPathForItem:4 inSection:0];
                     
-                    expect([controller objectAtIndexPath:event1IndexPath]).to.equal(event1);
-                    expect([controller objectAtIndexPath:event2IndexPath]).to.equal(event2);
-                    expect([controller objectAtIndexPath:event3IndexPath]).to.equal(event3);
-                    expect([controller objectAtIndexPath:event4IndexPath]).to.equal(event4);
-                    expect([controller objectAtIndexPath:event5IndexPath]).to.equal(event5);
+                    expect([controller objectAtIndexPath:inner1IndexPath]).to.equal(inner1);
+                    expect([controller objectAtIndexPath:inner2IndexPath]).to.equal(inner2);
+                    expect([controller objectAtIndexPath:inner3IndexPath]).to.equal(inner3);
+                    expect([controller objectAtIndexPath:inner4IndexPath]).to.equal(inner4);
+                    expect([controller objectAtIndexPath:inner5IndexPath]).to.equal(inner5);
                     
-                    expect([controller indexPathForObject:event1]).to.equal(event1IndexPath);
-                    expect([controller indexPathForObject:event2]).to.equal(event2IndexPath);
-                    expect([controller indexPathForObject:event3]).to.equal(event3IndexPath);
-                    expect([controller indexPathForObject:event4]).to.equal(event4IndexPath);
-                    expect([controller indexPathForObject:event5]).to.equal(event5IndexPath);
+                    expect([controller indexPathForObject:inner1]).to.equal(inner1IndexPath);
+                    expect([controller indexPathForObject:inner2]).to.equal(inner2IndexPath);
+                    expect([controller indexPathForObject:inner3]).to.equal(inner3IndexPath);
+                    expect([controller indexPathForObject:inner4]).to.equal(inner4IndexPath);
+                    expect([controller indexPathForObject:inner5]).to.equal(inner5IndexPath);
                 });
 
                 describe(@"and then we move 2 items within the list", ^{
                     beforeEach(^{
-                        NSMutableOrderedSet *orderedSet = [day mutableOrderedSetValueForKey:HLSelector(locationEvents)];
+                        NSMutableOrderedSet *orderedSet = [outer mutableOrderedSetValueForKey:ZSWSelector(objects)];
                         [orderedSet exchangeObjectAtIndex:1 withObjectAtIndex:3];
                         
                         [[delegate expect] hierarchicalController:controller
@@ -730,30 +732,30 @@ describe(@"ZSWHierarchicalResultsController", ^{
                     });
                     
                     it(@"should return the right objects and backwards", ^{
-                        NSIndexPath *event1IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
-                        NSIndexPath *event2IndexPath = [NSIndexPath indexPathForItem:3 inSection:0];
-                        NSIndexPath *event3IndexPath = [NSIndexPath indexPathForItem:2 inSection:0];
-                        NSIndexPath *event4IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
-                        NSIndexPath *event5IndexPath = [NSIndexPath indexPathForItem:4 inSection:0];
+                        NSIndexPath *inner1IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
+                        NSIndexPath *inner2IndexPath = [NSIndexPath indexPathForItem:3 inSection:0];
+                        NSIndexPath *inner3IndexPath = [NSIndexPath indexPathForItem:2 inSection:0];
+                        NSIndexPath *inner4IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
+                        NSIndexPath *inner5IndexPath = [NSIndexPath indexPathForItem:4 inSection:0];
                         
-                        expect([controller objectAtIndexPath:event1IndexPath]).to.equal(event1);
-                        expect([controller objectAtIndexPath:event2IndexPath]).to.equal(event2);
-                        expect([controller objectAtIndexPath:event3IndexPath]).to.equal(event3);
-                        expect([controller objectAtIndexPath:event4IndexPath]).to.equal(event4);
-                        expect([controller objectAtIndexPath:event5IndexPath]).to.equal(event5);
+                        expect([controller objectAtIndexPath:inner1IndexPath]).to.equal(inner1);
+                        expect([controller objectAtIndexPath:inner2IndexPath]).to.equal(inner2);
+                        expect([controller objectAtIndexPath:inner3IndexPath]).to.equal(inner3);
+                        expect([controller objectAtIndexPath:inner4IndexPath]).to.equal(inner4);
+                        expect([controller objectAtIndexPath:inner5IndexPath]).to.equal(inner5);
                         
-                        expect([controller indexPathForObject:event1]).to.equal(event1IndexPath);
-                        expect([controller indexPathForObject:event2]).to.equal(event2IndexPath);
-                        expect([controller indexPathForObject:event3]).to.equal(event3IndexPath);
-                        expect([controller indexPathForObject:event4]).to.equal(event4IndexPath);
-                        expect([controller indexPathForObject:event5]).to.equal(event5IndexPath);
+                        expect([controller indexPathForObject:inner1]).to.equal(inner1IndexPath);
+                        expect([controller indexPathForObject:inner2]).to.equal(inner2IndexPath);
+                        expect([controller indexPathForObject:inner3]).to.equal(inner3IndexPath);
+                        expect([controller indexPathForObject:inner4]).to.equal(inner4IndexPath);
+                        expect([controller indexPathForObject:inner5]).to.equal(inner5IndexPath);
                     });
                 });
             });
             
             describe(@"when the order of the objects changes", ^{
                 beforeEach(^{
-                    NSMutableOrderedSet *orderedSet = [day mutableOrderedSetValueForKey:HLSelector(locationEvents)];
+                    NSMutableOrderedSet *orderedSet = [outer mutableOrderedSetValueForKey:ZSWSelector(objects)];
                     [orderedSet exchangeObjectAtIndex:0 withObjectAtIndex:1];
                     
                     [[delegate expect] hierarchicalController:controller
@@ -775,26 +777,26 @@ describe(@"ZSWHierarchicalResultsController", ^{
                 });
                 
                 it(@"should return the right objects and backwards", ^{
-                    NSIndexPath *event1IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
-                    NSIndexPath *event2IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
+                    NSIndexPath *inner1IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
+                    NSIndexPath *inner2IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
                     
-                    expect([controller objectAtIndexPath:event1IndexPath]).to.equal(event1);
-                    expect([controller objectAtIndexPath:event2IndexPath]).to.equal(event2);
+                    expect([controller objectAtIndexPath:inner1IndexPath]).to.equal(inner1);
+                    expect([controller objectAtIndexPath:inner2IndexPath]).to.equal(inner2);
                     
-                    expect([controller indexPathForObject:event1]).to.equal(event1IndexPath);
-                    expect([controller indexPathForObject:event2]).to.equal(event2IndexPath);
+                    expect([controller indexPathForObject:inner1]).to.equal(inner1IndexPath);
+                    expect([controller indexPathForObject:inner2]).to.equal(inner2IndexPath);
                 });
             });
             
             describe(@"when the order changes and we insert at the same time", ^{
-                __block CDLocationEvent *event3;
+                __block InnerObject *inner3;
                 
                 beforeEach(^{
-                    event3 = [HLFixtures locationEventInContext:context];
+                    inner3 = [ZSWFixtures innerObjectWithContext:context];
                     
-                    NSMutableOrderedSet *orderedSet = [day mutableOrderedSetValueForKey:HLSelector(locationEvents)];
+                    NSMutableOrderedSet *orderedSet = [outer mutableOrderedSetValueForKey:ZSWSelector(objects)];
                     [orderedSet exchangeObjectAtIndex:0 withObjectAtIndex:1];
-                    [orderedSet insertObject:event3 atIndex:1];
+                    [orderedSet insertObject:inner3 atIndex:1];
                     
                     [[delegate expect] hierarchicalController:controller
                                  didUpdateWithDeletedSections:nil
@@ -816,17 +818,17 @@ describe(@"ZSWHierarchicalResultsController", ^{
                 });
                 
                 it(@"should return the right objects and backwards", ^{
-                    NSIndexPath *event1IndexPath = [NSIndexPath indexPathForItem:2 inSection:0];
-                    NSIndexPath *event2IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
-                    NSIndexPath *event3IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
+                    NSIndexPath *inner1IndexPath = [NSIndexPath indexPathForItem:2 inSection:0];
+                    NSIndexPath *inner2IndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
+                    NSIndexPath *inner3IndexPath = [NSIndexPath indexPathForItem:1 inSection:0];
                     
-                    expect([controller objectAtIndexPath:event1IndexPath]).to.equal(event1);
-                    expect([controller objectAtIndexPath:event2IndexPath]).to.equal(event2);
-                    expect([controller objectAtIndexPath:event3IndexPath]).to.equal(event3);
+                    expect([controller objectAtIndexPath:inner1IndexPath]).to.equal(inner1);
+                    expect([controller objectAtIndexPath:inner2IndexPath]).to.equal(inner2);
+                    expect([controller objectAtIndexPath:inner3IndexPath]).to.equal(inner3);
                     
-                    expect([controller indexPathForObject:event1]).to.equal(event1IndexPath);
-                    expect([controller indexPathForObject:event2]).to.equal(event2IndexPath);
-                    expect([controller indexPathForObject:event3]).to.equal(event3IndexPath);
+                    expect([controller indexPathForObject:inner1]).to.equal(inner1IndexPath);
+                    expect([controller indexPathForObject:inner2]).to.equal(inner2IndexPath);
+                    expect([controller indexPathForObject:inner3]).to.equal(inner3IndexPath);
                 });
             });
         });

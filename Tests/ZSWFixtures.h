@@ -14,6 +14,7 @@
 @interface ZSWFixtures : NSObject
 
 + (NSManagedObjectContext *)context;
++ (OuterObject *)outerObjectWithContext:(NSManagedObjectContext *)context;
 + (OuterObject *)outerObjectWithInnerCount:(NSInteger)innerCount context:(NSManagedObjectContext *)context;
 + (InnerObject *)innerObjectWithContext:(NSManagedObjectContext *)context;
 
