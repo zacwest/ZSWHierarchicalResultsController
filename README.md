@@ -7,6 +7,8 @@
 
 ZSWHierarchicalResultsController is a replacement for `NSFetchedResultsController`. Instead of supporting a single array of objects, this class shows one section per object, and an ordered set of objects within each section.
 
+This class is both fast and well-tested, and is able to handle a large number of objects; the major constraint will be memory usage which the controller aims to keep as low as it can.
+
 ## Creating a controller
 
 Let's say you're trying to display a section per `Day` which can contain some number of `Event` within:
@@ -67,6 +69,12 @@ The delegate callback is similar to that of NSFetchedResultsController, but desi
   }];
 }
 ```
+
+By design, this class does not emit "Update" notifications. If you are interested in knowing when your objects change in a way that should update your UI, you should set up KVO observers.
+
+## Single parent object
+
+You may occasionally wish to present a controller for a single object, for example if you expand the object or reveal an editing screen. `-[ZSWHierarchicalResultsController initWithParentObject:childKey:managedObjectContext:delegate:]` makes this convenient for you.
 
 ## Installation
 
