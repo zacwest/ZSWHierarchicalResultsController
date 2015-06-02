@@ -7,9 +7,10 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <CoreData/CoreData.h>
 
-@class HLHierarchicalResultsController;
-@protocol HLHierarchicalResultsDelegate <NSObject>
+@class ZSWHierarchicalResultsController;
+@protocol ZSWHierarchicalResultsDelegate <NSObject>
 /*!
  * @brief The controller updated
  *
@@ -24,7 +25,7 @@
  * @param deletedIndexPaths The items newly inserted
  * @param insertedIndexPaths The items newly deleted
  */
-- (void)hierarchicalController:(HLHierarchicalResultsController *)controller
+- (void)hierarchicalController:(ZSWHierarchicalResultsController *)controller
   didUpdateWithDeletedSections:(NSIndexSet *)deletedSections
               insertedSections:(NSIndexSet *)insertedSections
                   deletedItems:(NSArray *)deletedIndexPaths
@@ -40,10 +41,10 @@
  * by a section, and the children of the parent object are items in that section.
  *
  * This class is designed to function with a \ref UICollectionView but can be used for
- * other areas as well, but the delegate methods in \ref HLHierarchicalResultsDelegate aim
+ * other areas as well, but the delegate methods in \ref ZSWHierarchicalResultsDelegate aim
  * to make working with the collection view easy.
  */
-@interface HLHierarchicalResultsController : NSObject
+@interface ZSWHierarchicalResultsController : NSObject
 
 #pragma mark - Creation
 
@@ -59,7 +60,7 @@
 - (instancetype)initWithFetchRequest:(NSFetchRequest *)fetchRequest
                             childKey:(NSString *)childKey
                 managedObjectContext:(NSManagedObjectContext *)context
-                            delegate:(id<HLHierarchicalResultsDelegate>)delegate;
+                            delegate:(id<ZSWHierarchicalResultsDelegate>)delegate;
 
 /*!
  * @brief Create a controller based on a single object
@@ -73,10 +74,10 @@
 - (instancetype)initWithParentObject:(NSManagedObject *)parentObject
                             childKey:(NSString *)childKey
                 managedObjectContext:(NSManagedObjectContext *)context
-                            delegate:(id<HLHierarchicalResultsDelegate>)delegate;
+                            delegate:(id<ZSWHierarchicalResultsDelegate>)delegate;
 
 @property (nonatomic, strong, readonly) NSManagedObjectContext *managedObjectContext;
-@property (nonatomic, weak, readonly) id<HLHierarchicalResultsDelegate> delegate;
+@property (nonatomic, weak, readonly) id<ZSWHierarchicalResultsDelegate> delegate;
 
 #pragma mark - Information
 

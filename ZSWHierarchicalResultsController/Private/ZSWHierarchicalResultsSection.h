@@ -7,8 +7,9 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <CoreData/CoreData.h>
 
-@interface HLHierarchicalResultsSection : NSObject
+@interface ZSWHierarchicalResultsSection : NSObject
 
 @property (nonatomic) NSInteger sectionIdx;
 @property (nonatomic) NSManagedObject *object;
@@ -20,7 +21,7 @@
 - (id)objectInContainedObjectsAtIndex:(NSUInteger)idx;
 - (id)objectAtIndexedSubscript:(NSUInteger)idx;
 
-- (NSComparisonResult)compare:(HLHierarchicalResultsSection *)anotherSection
+- (NSComparisonResult)compare:(ZSWHierarchicalResultsSection *)anotherSection
          usingSortDescriptors:(NSArray *)sortDescriptors;
 
 @end

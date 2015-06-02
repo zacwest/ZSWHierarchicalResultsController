@@ -6,15 +6,13 @@
 //  Copyright (c) 2014 Hey, Inc. All rights reserved.
 //
 
-#import "HLHierarchicalResultsSection.h"
+#import "ZSWHierarchicalResultsSection.h"
 
-HLDefineLogLevel(LOG_LEVEL_VERBOSE);
-
-@interface HLHierarchicalResultsSection()
+@interface ZSWHierarchicalResultsSection()
 @property (nonatomic, readwrite) NSArray *sortDescriptors;
 @end
 
-@implementation HLHierarchicalResultsSection
+@implementation ZSWHierarchicalResultsSection
 
 - (id)init {
     self = [super init];
@@ -32,11 +30,11 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     return self.object.hash;
 }
 
-- (BOOL)isEqual:(HLHierarchicalResultsSection *)section {
+- (BOOL)isEqual:(ZSWHierarchicalResultsSection *)section {
     return [self.object isEqual:section.object];
 }
 
-- (NSComparisonResult)compare:(HLHierarchicalResultsSection *)anotherSection
+- (NSComparisonResult)compare:(ZSWHierarchicalResultsSection *)anotherSection
          usingSortDescriptors:(NSArray *)sortDescriptors {
     NSComparisonResult result = NSOrderedSame;
     
@@ -64,7 +62,7 @@ HLDefineLogLevel(LOG_LEVEL_VERBOSE);
     if (idx < self.containedObjects.count) {
         return self.containedObjects[idx];
     } else {
-        DDLogError(@"Asked for object at idx %zd in section %zd but out of bounds", idx, self.sectionIdx);
+        NSLog(@"Asked for object at idx %zd in section %zd but out of bounds", idx, self.sectionIdx);
         return nil;
     }
 }
