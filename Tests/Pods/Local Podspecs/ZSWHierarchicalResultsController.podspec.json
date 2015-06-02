@@ -1,8 +1,8 @@
 {
   "name": "ZSWHierarchicalResultsController",
   "version": "1.0",
-  "summary": "An NSFetchedResultsController replacement for root objects containing ordered objects",
-  "description": "                       ZSWHierarchicalResultsController creates one section per matching object of its\n                       NSFetchRequest and creates items inside that section for all objects in a designated\n                       relationship.\n\n                       In other words, each section is an object and each item inside is a subobject in the hierarchy.\n",
+  "summary": "An NSFetchedResultsController replacement for a hierarchical object relationship",
+  "description": "                       ZSWHierarchicalResultsController creates one section per object of its\n                       NSFetchRequest and creates items inside that section for all objects in a designated\n                       relationship.\n",
   "homepage": "https://github.com/zacwest/ZSWHierarchicalResultsController",
   "license": "MIT",
   "authors": {

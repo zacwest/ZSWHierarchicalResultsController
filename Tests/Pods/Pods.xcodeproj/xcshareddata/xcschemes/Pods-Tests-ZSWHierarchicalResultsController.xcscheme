@@ -14,7 +14,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "C124041B6395AFEB3CF15D59"
+               BlueprintIdentifier = "F580DAD07B204779539CEF25"
                BuildableName = "ZSWHierarchicalResultsController.framework"
                BlueprintName = "Pods-Tests-ZSWHierarchicalResultsController"
                ReferencedContainer = "container:Pods.xcodeproj">
