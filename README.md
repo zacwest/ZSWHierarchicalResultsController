@@ -1,11 +1,72 @@
 # ZSWHierarchicalResultsController
 
-[![CI Status](http://img.shields.io/travis/Zachary West/ZSWHierarchicalResultsController.svg?style=flat)](https://travis-ci.org/Zachary West/ZSWHierarchicalResultsController)
+[![CI Status](http://img.shields.io/travis/zacwest/ZSWHierarchicalResultsController.svg?style=flat)](https://travis-ci.org/zacwest/ZSWHierarchicalResultsController)
 [![Version](https://img.shields.io/cocoapods/v/ZSWHierarchicalResultsController.svg?style=flat)](http://cocoapods.org/pods/ZSWHierarchicalResultsController)
 [![License](https://img.shields.io/cocoapods/l/ZSWHierarchicalResultsController.svg?style=flat)](http://cocoapods.org/pods/ZSWHierarchicalResultsController)
 [![Platform](https://img.shields.io/cocoapods/p/ZSWHierarchicalResultsController.svg?style=flat)](http://cocoapods.org/pods/ZSWHierarchicalResultsController)
 
+ZSWHierarchicalResultsController is a replacement for `NSFetchedResultsController`. Instead of supporting a single array of objects, this class shows one section per object, and an ordered set of objects within each section.
 
+## Creating a controller
+
+Let's say you're trying to display a section per `Day` which can contain some number of `Event` within:
+
+```objective-c
+@interface Day : NSManagedObject
+@property id sortKey;
+@property NSOrderedSet *events;
+@end
+
+@interface Event : NSManagedObject
+@property Day *day;
+@end
+```
+
+You can create a controller to display the events contained within each day:
+
+```objective-c
+NSFetchRequest *req = [NSFetchRequest fetchRequestWithEntityName:@"Day"];
+req.predicate = [NSPredicate predicateWithFormat:@"sortKey != nil"];
+req.sortDescriptors = @[ [NSSortDescriptor sortDescriptorWithKey:@"sortKey" ascending:YES] ];
+
+controller = [[ZSWHierarchicalResultsController alloc]
+                   initWithFetchRequest:req
+                               childKey:@"objects"
+                   managedObjectContext:context
+                               delegate:self];
+```
+
+## Receiving updates
+
+The delegate callback is similar to that of NSFetchedResultsController, but designed for easy use with UICollectionViews:
+
+```objective-c
+- (void)hierarchicalController:(ZSWHierarchicalResultsController *)controller
+  didUpdateWithDeletedSections:(NSIndexSet *)deletedSections
+              insertedSections:(NSIndexSet *)insertedSections
+                  deletedItems:(NSArray *)deletedIndexPaths
+                 insertedItems:(NSArray *)insertedIndexPaths {
+  [self.collectionView performBatchUpdates:^{
+    if (deletedSections) {
+      [self.collectionView deleteSections:deletedSections];
+    }
+
+    if (insertedSections) {
+      [self.collectionView insertSections:insertedSections];
+    }
+
+    if (deletedIndexPaths) {
+      [self.collectionView deleteItemsAtIndexPaths:deletedIndexPaths];
+    }
+
+    if (insertedIndexPaths) {
+      [self.collectionView insertItemsAtIndexPaths:insertedIndexPaths];
+    }
+  } completion:^(BOOL finished) {
+
+  }];
+}
+```
 
 ## Installation
 
