@@ -2,8 +2,8 @@
 
 #ifdef __OBJC__
 
-  @import Specta;
-  @import Expecta;
-#import <OCMock/OCMock.h>
+    @import Specta;
+    @import Expecta;
+    #import <OCMock/OCMock.h>
 
 #endif
